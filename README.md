@@ -6,7 +6,9 @@ A browser automation benchmark framework for measuring the performance and relia
 
 This framework runs a standardised set of shopping journeys (search, product comparison, add to cart, full checkout, session recovery) against a target e-commerce store, measures key P0 metrics, stores results in SQLite, and generates JSON and Markdown reports.
 
-**Sprint 1 scope:** J01 (Simple Product Purchase), J04 (Cart Recovery), J14 (Product Comparison) on PrestaShop via local Playwright. Webfuse Automation API integration is Sprint 2.
+**Sprint 1 scope:** J01 (Simple Product Purchase), J04 (Cart Recovery), J14 (Product Comparison) on PrestaShop with two providers:
+- **Direct** — Playwright drives the browser locally (baseline)
+- **Webfuse** — Playwright drives the browser through the Webfuse/Surfly Automation API proxy layer
 
 ## Quick Start
 
@@ -34,7 +36,7 @@ curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/
 ### 3. Run the benchmark
 
 ```bash
-# All 3 Sprint 1 journeys (default)
+# All 3 Sprint 1 journeys with direct Playwright (default)
 npm run benchmark
 
 # Single journey
@@ -42,9 +44,27 @@ npm run benchmark -- --journeys J01
 
 # Non-headless (see the browser)
 npm run benchmark -- --no-headless
+
+# Through Webfuse Automation API (requires WEBFUSE_API_KEY)
+WEBFUSE_API_KEY=your-key npm run benchmark -- --provider webfuse
 ```
 
-> **Note:** `SITE_TYPE=prestashop` is the default. The shop runs on `http://localhost:8080` by default.
+## Providers
+
+### Direct (default)
+Standard Playwright automation — launches Chromium, navigates directly to the shop. This is the L1 (deterministic scripted) baseline.
+
+### Webfuse
+Creates a Surfly co-browsing session pointing at the target shop URL, then drives Playwright through the Webfuse proxy layer. This measures automation quality through the Webfuse Automation API as described in the benchmark roadmap.
+
+**Required env vars:**
+- `WEBFUSE_API_KEY` — Surfly REST API key
+- `WEBFUSE_API_URL` — API base URL (default: `https://app.surfly.com`)
+
+**Architecture:**
+```
+Runner (Playwright) → Webfuse Session (Surfly proxy) → Target Shop (PrestaShop)
+```
 
 ## Available Journeys
 
@@ -62,9 +82,60 @@ npm run benchmark -- --no-headless
 | M2 | Average Partial Completion  | Mean fraction of steps passed across all journeys (0.0–1.0)      |
 | M3 | Execution Time              | Total run time and per-journey average                            |
 
-## Example Output
+## Output
 
-From a verified passing run (2026-03-28):
+- **SQLite** — `benchmark.db` stores all run/journey/step results
+- **JSON reports** — `reports/report_<timestamp>.json`
+- **Markdown reports** — `reports/report_<timestamp>.md`
+
+## CLI Options
+
+```
+Usage: journey-benchmark [options]
+
+Options:
+  --provider <type>    Automation provider: direct | webfuse (default: "direct")
+  --journeys <list>    Comma-separated journey IDs (default: "J01,J04,J14")
+  --headless           Run browser in headless mode (default: true)
+  --no-headless        Run browser in non-headless mode
+  --db <path>          Path to SQLite database (default: "./benchmark.db")
+  --reports <dir>      Output directory for reports (default: "./reports")
+```
+
+## Docker Stack
+
+The benchmark target is a standard PrestaShop instance:
+
+| Service | Image | Port | Purpose |
+|---------|-------|------|---------|
+| shop | prestashop/prestashop:latest | 8080 | PrestaShop e-commerce store |
+| mysql | mysql:5.7 | 3306 (internal) | Database backend |
+
+Start: `cd docker && docker compose up -d`
+Stop: `cd docker && docker compose down`
+Reset: `cd docker && docker compose down -v && docker compose up -d`
+
+## Architecture
+
+```
+┌──────────────┐     ┌───────────────────┐     ┌──────────────────┐
+│   Benchmark  │────▶│  Provider          │────▶│  Target Site      │
+│   Runner     │     │  (Direct/Webfuse)  │     │  (PrestaShop)     │
+│              │◀────│                    │◀────│                   │
+│  - Metrics   │     │  Direct: local     │     │  localhost:8080   │
+│  - SQLite    │     │  Webfuse: Surfly   │     │                   │
+│  - Reports   │     │    session proxy   │     │                   │
+└──────────────┘     └───────────────────┘     └──────────────────┘
+```
+
+## Sprint 1 Shortcuts / Known Limitations
+
+1. **Webfuse API connectivity**: The Webfuse/Surfly API endpoint (`app.surfly.com`) returns 501 from the dev machine network. The WebfuseProvider code is complete and follows the Surfly REST API spec, but cannot be E2E tested until API access is restored. Direct provider runs are fully verified.
+2. **PrestaShop as WebArena proxy**: We use the official PrestaShop Docker image instead of the full WebArena shopping site Docker image (which bundles Magento). PrestaShop provides equivalent e-commerce journey coverage with faster startup and lower resource use.
+3. **No agentic baseline yet**: Browser Use integration is Sprint 2 scope.
+4. **Token cost (M6) deferred**: LLM proxy middleware is Sprint 2.
+
+## Example Run Output
 
 ```
 Journey Benchmark
@@ -73,115 +144,16 @@ Journey Benchmark
    Target:   http://localhost:8080
 
 > Running J01: Simple Product Purchase
-  [PASS] PASSED — 26934ms (100% complete)
+  [PASS] PASSED — 26902ms (100% complete)
 
 > Running J04: Cart Recovery (Expired Session)
-  [PASS] PASSED — 6985ms (100% complete)
+  [PASS] PASSED — 7073ms (100% complete)
 
 > Running J14: Product Comparison
-  [PASS] PASSED — 4207ms (100% complete)
+  [PASS] PASSED — 4197ms (100% complete)
 
-Passed:  3/3 | Success: 100.0%
+---------------------------------
+Passed:  3/3
+Failed:  0/3
+Success: 100.0%
 ```
-
-See [`reports/example-run.md`](reports/example-run.md) for a full human-readable report and [`reports/example-run.json`](reports/example-run.json) for machine-readable output.
-
-## CLI Options
-
-```
-Options:
-  --provider <type>    Automation provider: direct | webfuse (default: "direct")
-  --journeys <list>    Comma-separated journey IDs (default: "J01,J04,J14")
-  --headless           Run in headless mode (default: true)
-  --no-headless        Run in non-headless mode
-  --db <path>          Path to SQLite database (default: ./benchmark.db)
-  --reports <dir>      Output directory for reports (default: ./reports)
-  -V, --version        Output the version number
-  -h, --help           Display help
-```
-
-## Environment Variables
-
-| Variable              | Default                    | Description                                             |
-|-----------------------|----------------------------|---------------------------------------------------------|
-| `SHOP_URL`            | `http://localhost:8080`    | Base URL of the target e-commerce store                 |
-| `SITE_TYPE`           | `prestashop`               | Selector profile: `prestashop` or `magento`             |
-| `SHOP_EMAIL`          | `test@example.com`         | Customer login email (used in credentials)              |
-| `SHOP_PASSWORD`       | `test123`                  | Customer password                                       |
-| `AUTOMATION_PROVIDER` | `direct`                   | Override provider (also set by `--provider`)            |
-| `WEBFUSE_API_KEY`     | _(none)_                   | Required when using the `webfuse` provider (Sprint 2)   |
-
-## Architecture
-
-```
-src/
-  cli.ts                       CLI entry point (Commander)
-  types.ts                     Shared TypeScript interfaces
-  webfuse/
-    provider.ts                AutomationProvider interface
-    direct.ts                  DirectProvider (local Playwright)
-    webfuse.ts                 WebfuseProvider stub (Sprint 2)
-    index.ts                   Factory: createProvider()
-  metrics/
-    collector.ts               MetricCollector — per-step timing
-    compute.ts                 M1/M2/M3 calculation functions
-    index.ts
-  db/
-    schema.ts                  SQLite schema DDL (runs, journey_results, step_results)
-    operations.ts              insertRun(), getRun()
-    index.ts                   openDatabase()
-  journeys/
-    config.ts                  SiteConfig for PrestaShop (hummingbird) and Magento
-    base.ts                    BaseJourney — shared execute() logic
-    j01-product-purchase.ts    J01: full guest checkout flow
-    j04-cart-recovery.ts       J04: session expiry simulation + recovery
-    j14-product-comparison.ts  J14: two-product price comparison
-    index.ts
-  runner/
-    runner.ts                  BenchmarkRunner — orchestrates journeys sequentially
-    index.ts
-  reporter/
-    generator.ts               JSON and Markdown report generation
-    index.ts
-docker/
-  docker-compose.yml           PrestaShop + MySQL stack
-  seed.sh                      Wait-for-ready check
-reports/
-  example-run.json             Machine-readable output from verified passing run
-  example-run.md               Human-readable summary from verified passing run
-```
-
-## Database Schema
-
-Results are stored in `benchmark.db` (SQLite):
-
-- **runs** — one row per benchmark invocation (provider, timestamps, pass/fail counts)
-- **journey_results** — one row per journey per run (status, execution time, partial completion)
-- **step_results** — one row per step per journey (name, status, timing, error message)
-
-## Development
-
-```bash
-# Type-check without building
-npm run typecheck
-
-# Build to dist/
-npm run build
-
-# Run tests
-npm test
-```
-
-## Webfuse Automation API (Sprint 2)
-
-Sprint 2 wires in the `WebfuseProvider` so the runner controls journeys via the Webfuse Automation API instead of direct Playwright. Set `--provider webfuse` and `WEBFUSE_API_KEY` to activate. The journey code is provider-agnostic — no changes needed to journey implementations.
-
-## Roadmap
-
-| Sprint | Scope                                   | Status          |
-|--------|-----------------------------------------|-----------------|
-| 1      | WebArena/PrestaShop + 3 journeys (J01, J04, J14), P0 metrics, SQLite, reports | ✅ Done |
-| 2      | Webfuse Automation API integration, token tracking (M6), agentic baseline (M7) | Planned |
-| 3      | Travel + Auth journeys (J05, J08, J09)  | Planned         |
-| 4      | Forms + Support journeys (J12, J17), full 8-journey suite | Planned |
-| 5      | Nightly automation, regression alerting to Discord | Planned |

@@ -10,7 +10,7 @@ import type { AutomationProvider } from './provider.js';
 export function createProvider(headless = true): AutomationProvider {
   const providerType = process.env['AUTOMATION_PROVIDER'] ?? 'direct';
   if (providerType === 'webfuse') {
-    return new WebfuseProvider();
+    return new WebfuseProvider(headless);
   }
   return new DirectProvider(headless);
 }
