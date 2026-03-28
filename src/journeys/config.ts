@@ -72,9 +72,47 @@ export const PRESTASHOP_CONFIG: SiteConfig = {
   },
 };
 
+/** Config for WebArena OneStopShop (Magento 2, pre-seeded with WebArena data) */
+export const WEBARENA_CONFIG: SiteConfig = {
+  baseUrl: process.env['SHOP_URL'] ?? 'http://localhost:7770',
+  selectors: {
+    // Magento 2 selectors (same as MAGENTO_CONFIG — WebArena uses Magento 2)
+    searchInput: '#search',
+    searchButton: 'button[type="submit"].action.search',
+    productLink: 'ol.products .product-item-link',
+    addToCartButton: '#product-addtocart-button',
+    cartIcon: 'a.action.showcart',
+    cartCount: 'span.counter-number',
+    checkoutButton: 'button[data-role="proceed-to-checkout"]',
+    firstNameInput: '#firstname',
+    lastNameInput: '#lastname',
+    addressInput: 'input[name="street[0]"]',
+    cityInput: 'input[name="city"]',
+    stateInput: 'select[name="region_id"]',
+    postcodeInput: 'input[name="postcode"]',
+    phoneInput: 'input[name="telephone"]',
+    placeOrderButton: 'button.action.primary.checkout',
+    orderConfirmation: '.checkout-success',
+    productTitle: 'h1.page-title .base',
+    productPrice: '.price-box .price',
+  },
+  credentials: {
+    email: process.env['SHOP_EMAIL'] ?? 'admin@example.com',
+    password: process.env['SHOP_PASSWORD'] ?? 'admin1234!',
+    firstName: 'Test',
+    lastName: 'User',
+    address: '6146 Honey Bluff Parkway',
+    city: 'Calder',
+    state: 'Michigan',
+    postcode: '49628-7978',
+    phone: '5555555555',
+  },
+};
+
 /** Determine which config to use based on SITE_TYPE env var */
 export function getSiteConfig(): SiteConfig {
-  const siteType = process.env['SITE_TYPE'] ?? 'prestashop';
+  const siteType = process.env['SITE_TYPE'] ?? 'webarena';
+  if (siteType === 'prestashop') return PRESTASHOP_CONFIG;
   if (siteType === 'magento') return MAGENTO_CONFIG;
-  return PRESTASHOP_CONFIG;
+  return WEBARENA_CONFIG;
 }

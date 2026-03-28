@@ -1,0 +1,40 @@
+###############################################################################
+# Journey Benchmark — Sprint 1 Stack
+# WebArena Shopping Site (OneStopShop / Magento) + Benchmark Runner
+#
+# Usage:
+#   docker compose -f docker-compose.benchmark.yml up -d
+#   # Wait ~2 min for Magento to initialize
+#   docker compose -f docker-compose.benchmark.yml exec shopping \
+#     /var/www/magento2/bin/magento setup:store-config:set --base-url="http://localhost:7770"
+#   docker compose -f docker-compose.benchmark.yml exec shopping \
+#     /var/www/magento2/bin/magento cache:flush
+#
+# Notes:
+# - webarenaimages/shopping_final_0712 is the WebArena OneStopShop (Magento 2)
+#   pre-seeded with the same products used in the 812 WebArena benchmark tasks.
+# - Port 7770 matches WebArena's standard shopping site port.
+# - set SHOP_URL=http://localhost:7770 when running the benchmark runner.
+###############################################################################
+version: '3.8'
+
+services:
+  shopping:
+    image: webarenaimages/shopping_final_0712
+    ports:
+      - "7770:80"
+    environment:
+      # Magento base URL — update after first boot with magento CLI if needed
+      MAGENTO_HOST: localhost:7770
+    volumes:
+      - webarena_shop_data:/var/www/magento2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  webarena_shop_data:

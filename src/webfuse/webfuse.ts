@@ -4,20 +4,25 @@ import type { AutomationProvider } from './provider.js';
 /**
  * Webfuse Automation API provider.
  *
- * Creates a Surfly session pointing at the target URL, then connects
- * Playwright to the follower/leader URL so the benchmark runner drives
- * the page through the Webfuse proxy layer — exactly as described in
- * the implementation roadmap §10.
+ * Flow (per implementation roadmap D3):
+ * 1. Launch Chromium and navigate to the Webfuse space URL
+ * 2. Webfuse redirects to a session URL (e.g. https://webfu.se/sXXX)
+ * 3. Extract the session_key from the URL
+ * 4. The space is pre-configured to open the target URL — Playwright is
+ *    now browsing through the Webfuse proxy layer
+ * 5. The session_key can be passed to the MCP endpoint for AI control
  *
  * Env vars:
- *   WEBFUSE_API_KEY — Surfly REST API key
- *   WEBFUSE_API_URL — API base (default: https://app.surfly.com)
+ *   WEBFUSE_API_KEY  — REST API token (ck_... or Token format) for webfu.se/api/
+ *   WEBFUSE_REST_KEY — Session MCP token (rk_... Bearer format)
+ *   WEBFUSE_SPACE_URL — Webfuse space URL to open (e.g. https://webfu.se/+benchmark/)
+ *   WEBFUSE_TARGET_URL — Target site URL the space should open (falls back to baseUrl)
  */
 export class WebfuseProvider implements AutomationProvider {
   private apiKey: string;
-  private apiUrl: string;
+  private spaceUrl: string;
   private browser: Browser | null = null;
-  private activeSessions: string[] = [];
+  private activeSessions: Array<{ page: Page; sessionKey: string }> = [];
   private headless: boolean;
 
   constructor(headless = true) {
@@ -26,111 +31,100 @@ export class WebfuseProvider implements AutomationProvider {
       throw new Error('WEBFUSE_API_KEY is not set — cannot use Webfuse provider');
     }
     this.apiKey = apiKey;
-    this.apiUrl = process.env['WEBFUSE_API_URL'] ?? 'https://app.surfly.com';
+    this.spaceUrl = process.env['WEBFUSE_SPACE_URL'] ?? 'https://webfu.se/+test-autom/';
     this.headless = headless;
   }
 
   /**
-   * Create a Surfly session pointing at the given URL and return a Playwright
-   * Page connected through the Webfuse proxy.
+   * Navigate to the Webfuse space, get a proxied session, and return the page.
+   * The Webfuse proxy wraps the target URL — automation runs through the Webfuse layer.
    */
-  async openUrl(url: string): Promise<Page> {
-    // 1. Create a Surfly session via REST API
-    const session = await this.createSession(url);
-    this.activeSessions.push(session.id);
-
-    // 2. Launch browser if needed
+  async openUrl(_targetUrl: string): Promise<Page> {
     if (!this.browser) {
       this.browser = await chromium.launch({ headless: this.headless });
     }
 
-    // 3. Open the leader URL — Webfuse proxies the target URL through its layer
     const context = await this.browser.newContext();
     const page = await context.newPage();
-    await page.goto(session.leader_link, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-    // 4. Wait for Webfuse to finish loading the proxied page
-    //    The Surfly loader overlay disappears once the target is ready
-    await page.waitForFunction(
-      () => !document.querySelector('#surfly-loading, .surfly-loading, [data-surfly-loading]'),
-      { timeout: 30000 },
-    ).catch(() => {
-      // If no loader found, the page may already be ready
-    });
+    // Navigate to the Webfuse space — Surfly redirects to a session URL
+    console.log(`  [Webfuse] Opening space: ${this.spaceUrl}`);
+    await page.goto(this.spaceUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
+    // Wait for the session redirect — URL changes to /sXXX pattern
+    const sessionUrl = await this.waitForSessionUrl(page);
+    const sessionKey = this.extractSessionKey(sessionUrl);
+    console.log(`  [Webfuse] Session started: ${sessionKey} — ${sessionUrl}`);
+
+    // Wait for the Webfuse layer to finish loading the proxied page
+    await this.waitForPageReady(page);
+
+    this.activeSessions.push({ page, sessionKey });
     return page;
   }
 
   /**
-   * Create a co-browsing / automation session via the Surfly REST API.
+   * Wait for Surfly to redirect the page to a session URL (pattern: /sXXX).
    */
-  private async createSession(targetUrl: string): Promise<SurflySession> {
-    const response = await fetch(`${this.apiUrl}/v2/sessions/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: targetUrl,
-        api_key: this.apiKey,
-        // Automation-friendly settings
-        agent_can_request_control: false,
-        block_until_leader_joins: false,
-        hide_session_ui: true,
-        splash: false,
-        autohide_button: true,
-        allow_original_file_download: true,
-        cookie_transfer_enabled: true,
-      }),
-    });
+  private async waitForSessionUrl(page: Page): Promise<string> {
+    // Surfly redirects happen quickly; wait up to 15s for session URL
+    let lastUrl = page.url();
+    const deadline = Date.now() + 15000;
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '(no body)');
-      throw new Error(
-        `Surfly session creation failed (${response.status}): ${body}`,
-      );
+    while (Date.now() < deadline) {
+      const url = page.url();
+      if (url.match(/\/s\w{10,}(\/|$)/)) {
+        return url;
+      }
+      if (url !== lastUrl) {
+        lastUrl = url;
+        console.log(`  [Webfuse] URL: ${url}`);
+      }
+      await page.waitForTimeout(200);
     }
 
-    const data = await response.json() as SurflySession;
-    if (!data.leader_link) {
-      throw new Error('Surfly session response missing leader_link');
-    }
-
-    console.log(`  [Webfuse] Session ${data.id} created → ${targetUrl}`);
-    return data;
+    // If no session URL, use whatever page URL we have
+    const finalUrl = page.url();
+    console.log(`  [Webfuse] Session URL (timeout): ${finalUrl}`);
+    return finalUrl;
   }
 
   /**
-   * End all active Surfly sessions and close the browser.
+   * Extract the Surfly session key from a session URL.
+   * Example: https://webfu.se/s20EggChcfjSTkCdWSW0z2TrFw → s20EggChcfjSTkCdWSW0z2TrFw
+   */
+  private extractSessionKey(url: string): string {
+    const match = url.match(/\/(s\w{10,})(\/|$)/);
+    return match ? match[1]! : 'unknown';
+  }
+
+  /**
+   * Wait for the Webfuse-proxied page to finish loading.
+   */
+  private async waitForPageReady(page: Page): Promise<void> {
+    // Wait for network idle with short timeout (page may already be loaded)
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+    } catch {
+      // Acceptable — some pages don't reach networkidle in time
+    }
+  }
+
+  /**
+   * Return the session key for the last opened page (for MCP control).
+   */
+  getLastSessionKey(): string | null {
+    return this.activeSessions.at(-1)?.sessionKey ?? null;
+  }
+
+  /**
+   * Close browser and clean up.
    */
   async close(): Promise<void> {
-    // Terminate active Surfly sessions
-    for (const sessionId of this.activeSessions) {
-      try {
-        await fetch(`${this.apiUrl}/v2/sessions/${sessionId}/end/`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: this.apiKey }),
-        });
-      } catch {
-        // Best-effort cleanup
-      }
-    }
     this.activeSessions = [];
-
     if (this.browser) {
       await this.browser.close();
       this.browser = null;
     }
   }
-}
-
-/** Surfly session response shape */
-interface SurflySession {
-  id: string;
-  leader_link: string;
-  follower_link: string;
-  start_time: string;
-  end_time: string | null;
-  session_key: string;
 }
