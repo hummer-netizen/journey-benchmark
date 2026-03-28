@@ -24,16 +24,43 @@ export class J04CartRecovery extends BaseJourney {
         },
       },
       {
-        name: 'Add items to cart',
+        name: 'Search and add item to cart',
         execute: async (page: Page) => {
-          // Search and add first result to cart
-          await page.fill(selectors.searchInput, 'jacket');
-          await page.click(selectors.searchButton);
-          await page.waitForSelector(selectors.productLink, { timeout: 15000 });
-          await page.click(selectors.productLink);
+          // Navigate to a product directly
+          const productLinks = await page.$$(selectors.productLink);
+          if (productLinks.length === 0) {
+            // Try searching
+            await page.fill(selectors.searchInput, 'sweater');
+            if (selectors.searchButton) {
+              await page.click(selectors.searchButton);
+            } else {
+              await page.press(selectors.searchInput, 'Enter');
+            }
+            await page.waitForSelector(selectors.productLink, { timeout: 15000 });
+          }
+          const link = await page.$(selectors.productLink);
+          if (!link) throw new Error('No product found');
+          await link.click();
           await page.waitForSelector(selectors.addToCartButton, { timeout: 15000 });
           await page.click(selectors.addToCartButton);
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(3000);
+        },
+      },
+      {
+        name: 'Verify item in cart before clearing',
+        execute: async (page: Page) => {
+          await page.goto(`${baseUrl}/cart`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Verify cart has at least one item
+          const hasItems = await page.waitForFunction(
+            () => {
+              const items = document.querySelectorAll('.cart__item, .product-line, .cart-item');
+              return items.length > 0;
+            },
+            { timeout: 10000 },
+          ).catch(() => null);
+          if (!hasItems) {
+            throw new Error('Cart is empty after adding product');
+          }
         },
       },
       {
@@ -41,7 +68,6 @@ export class J04CartRecovery extends BaseJourney {
         execute: async (page: Page) => {
           const context = page.context();
           await context.clearCookies();
-          // Also clear localStorage to simulate full session expiry
           await page.evaluate(() => {
             try { localStorage.clear(); } catch {}
             try { sessionStorage.clear(); } catch {}
@@ -56,39 +82,39 @@ export class J04CartRecovery extends BaseJourney {
         },
       },
       {
-        name: 'Re-add items to cart',
+        name: 'Re-add item to cart',
         execute: async (page: Page) => {
-          await page.fill(selectors.searchInput, 'jacket');
-          await page.click(selectors.searchButton);
-          await page.waitForSelector(selectors.productLink, { timeout: 15000 });
-          await page.click(selectors.productLink);
+          const productLinks = await page.$$(selectors.productLink);
+          if (productLinks.length === 0) {
+            await page.fill(selectors.searchInput, 'sweater');
+            if (selectors.searchButton) {
+              await page.click(selectors.searchButton);
+            } else {
+              await page.press(selectors.searchInput, 'Enter');
+            }
+            await page.waitForSelector(selectors.productLink, { timeout: 15000 });
+          }
+          const link = await page.$(selectors.productLink);
+          if (!link) throw new Error('No product found after session clear');
+          await link.click();
           await page.waitForSelector(selectors.addToCartButton, { timeout: 15000 });
           await page.click(selectors.addToCartButton);
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(3000);
         },
       },
       {
-        name: 'Go to cart',
+        name: 'Verify cart has items after recovery',
         execute: async (page: Page) => {
-          await page.click(selectors.cartIcon);
-          await page.waitForSelector(selectors.checkoutButton, { timeout: 10000 });
-        },
-      },
-      {
-        name: 'Verify cart has items',
-        execute: async (page: Page) => {
-          const count = await page.$(selectors.cartCount);
-          if (count) {
-            const text = await count.textContent();
-            const num = parseInt(text ?? '0', 10);
-            if (num < 1) {
-              throw new Error(`Expected at least 1 item in cart, got ${num}`);
-            }
-          }
-          // Verify checkout button exists (cart is not empty)
-          const checkoutBtn = await page.$(selectors.checkoutButton);
-          if (!checkoutBtn) {
-            throw new Error('Cart appears to be empty — cart recovery failed');
+          await page.goto(`${baseUrl}/cart`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          const hasItems = await page.waitForFunction(
+            () => {
+              const items = document.querySelectorAll('.cart__item, .product-line, .cart-item');
+              return items.length > 0;
+            },
+            { timeout: 10000 },
+          ).catch(() => null);
+          if (!hasItems) {
+            throw new Error('Cart recovery failed — cart is empty after re-adding items');
           }
         },
       },

@@ -36,17 +36,17 @@ export const MAGENTO_CONFIG: SiteConfig = {
   },
 };
 
-/** Config for a PrestaShop store */
+/** Config for PrestaShop with Hummingbird theme (default Docker image) */
 export const PRESTASHOP_CONFIG: SiteConfig = {
   baseUrl: process.env['SHOP_URL'] ?? 'http://localhost:8080',
   selectors: {
-    searchInput: 'input#search_query_top',
-    searchButton: 'button[name="submit_search"]',
-    productLink: 'h3.product-title a, .product-description a',
-    addToCartButton: 'button.add-to-cart',
-    cartIcon: 'a.shopping-cart',
+    searchInput: 'input.js-search-input',
+    searchButton: '', // Hummingbird uses form submit, not a search button
+    productLink: 'a.product-miniature__title',
+    addToCartButton: '.product__add-to-cart-button',
+    cartIcon: 'a[href$="/cart"], .blockcart a',
     cartCount: '.cart-products-count',
-    checkoutButton: 'a.btn-primary[href*="order"]',
+    checkoutButton: '.cart-summary__actions.checkout a, .cart-summary__actions button:not([disabled])',
     firstNameInput: 'input[name="firstname"]',
     lastNameInput: 'input[name="lastname"]',
     addressInput: 'input[name="address1"]',
@@ -54,10 +54,10 @@ export const PRESTASHOP_CONFIG: SiteConfig = {
     stateInput: 'select[name="id_state"]',
     postcodeInput: 'input[name="postcode"]',
     phoneInput: 'input[name="phone"]',
-    placeOrderButton: 'button#payment-confirmation button',
-    orderConfirmation: '#order-confirmation',
-    productTitle: 'h1.h1',
-    productPrice: 'span.current-price',
+    placeOrderButton: '#payment-confirmation button',
+    orderConfirmation: '#order-confirmation, .order-confirmation',
+    productTitle: 'h1.product__name',
+    productPrice: '.product__price, .product__current-price',
   },
   credentials: {
     email: process.env['SHOP_EMAIL'] ?? 'test@example.com',
@@ -74,7 +74,7 @@ export const PRESTASHOP_CONFIG: SiteConfig = {
 
 /** Determine which config to use based on SITE_TYPE env var */
 export function getSiteConfig(): SiteConfig {
-  const siteType = process.env['SITE_TYPE'] ?? 'magento';
-  if (siteType === 'prestashop') return PRESTASHOP_CONFIG;
-  return MAGENTO_CONFIG;
+  const siteType = process.env['SITE_TYPE'] ?? 'prestashop';
+  if (siteType === 'magento') return MAGENTO_CONFIG;
+  return PRESTASHOP_CONFIG;
 }
