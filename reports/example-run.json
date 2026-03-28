@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-03-29T00:49:07.758Z",
-  "finishedAt": "2026-03-29T00:49:45.432Z",
+  "startedAt": "2026-03-28T23:52:00.121Z",
+  "finishedAt": "2026-03-28T23:52:42.110Z",
   "provider": "DirectProvider",
   "totalJourneys": 3,
   "passed": 3,
@@ -10,129 +10,7 @@
       "journeyId": "J01",
       "journeyName": "Simple Product Purchase",
       "status": "passed",
-      "executionTimeMs": 25598,
-      "partialCompletion": 1,
-      "stepsTotal": 9,
-      "stepsCompleted": 9,
-      "steps": [
-        {
-          "stepIndex": 0,
-          "stepName": "Navigate to homepage",
-          "status": "passed",
-          "executionTimeMs": 136
-        },
-        {
-          "stepIndex": 1,
-          "stepName": "Open a product detail page",
-          "status": "passed",
-          "executionTimeMs": 247
-        },
-        {
-          "stepIndex": 2,
-          "stepName": "Add product to cart",
-          "status": "passed",
-          "executionTimeMs": 3055
-        },
-        {
-          "stepIndex": 3,
-          "stepName": "Navigate to checkout",
-          "status": "passed",
-          "executionTimeMs": 173
-        },
-        {
-          "stepIndex": 4,
-          "stepName": "Fill personal information (guest checkout)",
-          "status": "passed",
-          "executionTimeMs": 6380
-        },
-        {
-          "stepIndex": 5,
-          "stepName": "Fill delivery address",
-          "status": "passed",
-          "executionTimeMs": 3253
-        },
-        {
-          "stepIndex": 6,
-          "stepName": "Confirm shipping method",
-          "status": "passed",
-          "executionTimeMs": 3239
-        },
-        {
-          "stepIndex": 7,
-          "stepName": "Complete payment and place order",
-          "status": "passed",
-          "executionTimeMs": 9115
-        },
-        {
-          "stepIndex": 8,
-          "stepName": "Verify order confirmation",
-          "status": "passed",
-          "executionTimeMs": 0
-        }
-      ],
-      "startedAt": "2026-03-29T00:49:08.199Z",
-      "finishedAt": "2026-03-29T00:49:33.797Z"
-    },
-    {
-      "journeyId": "J04",
-      "journeyName": "Cart Recovery (Expired Session)",
-      "status": "passed",
-      "executionTimeMs": 7046,
-      "partialCompletion": 1,
-      "stepsTotal": 7,
-      "stepsCompleted": 7,
-      "steps": [
-        {
-          "stepIndex": 0,
-          "stepName": "Navigate to homepage",
-          "status": "passed",
-          "executionTimeMs": 130
-        },
-        {
-          "stepIndex": 1,
-          "stepName": "Search and add item to cart",
-          "status": "passed",
-          "executionTimeMs": 3289
-        },
-        {
-          "stepIndex": 2,
-          "stepName": "Verify item in cart before clearing",
-          "status": "passed",
-          "executionTimeMs": 132
-        },
-        {
-          "stepIndex": 3,
-          "stepName": "Clear cookies/session (simulate expiry)",
-          "status": "passed",
-          "executionTimeMs": 4
-        },
-        {
-          "stepIndex": 4,
-          "stepName": "Navigate back to site",
-          "status": "passed",
-          "executionTimeMs": 134
-        },
-        {
-          "stepIndex": 5,
-          "stepName": "Re-add item to cart",
-          "status": "passed",
-          "executionTimeMs": 3212
-        },
-        {
-          "stepIndex": 6,
-          "stepName": "Verify cart has items after recovery",
-          "status": "passed",
-          "executionTimeMs": 145
-        }
-      ],
-      "startedAt": "2026-03-29T00:49:34.012Z",
-      "finishedAt": "2026-03-29T00:49:41.058Z"
-    },
-    {
-      "journeyId": "J14",
-      "journeyName": "Product Comparison",
-      "status": "passed",
-      "executionTimeMs": 4162,
+      "executionTimeMs": 29915,
       "partialCompletion": 1,
       "stepsTotal": 8,
       "stepsCompleted": 8,
@@ -141,29 +19,145 @@
           "stepIndex": 0,
           "stepName": "Navigate to homepage",
           "status": "passed",
-          "executionTimeMs": 120
+          "executionTimeMs": 122
         },
         {
           "stepIndex": 1,
-          "stepName": "Open first product and note details",
+          "stepName": "Open a product detail page",
           "status": "passed",
-          "executionTimeMs": 232
+          "executionTimeMs": 230
         },
         {
           "stepIndex": 2,
-          "stepName": "Go back to product listing",
+          "stepName": "Add product to cart",
           "status": "passed",
-          "executionTimeMs": 110
+          "executionTimeMs": 3050
         },
         {
           "stepIndex": 3,
-          "stepName": "Open second product and note details",
+          "stepName": "Proceed to checkout",
           "status": "passed",
-          "executionTimeMs": 223
+          "executionTimeMs": 3120
         },
         {
           "stepIndex": 4,
-          "stepName": "Compare products programmatically",
+          "stepName": "Fill shipping information (guest checkout)",
+          "status": "passed",
+          "executionTimeMs": 11052
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Select shipping method",
+          "status": "passed",
+          "executionTimeMs": 3235
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Complete payment and place order",
+          "status": "passed",
+          "executionTimeMs": 9106
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Verify order confirmation",
+          "status": "passed",
+          "executionTimeMs": 0
+        }
+      ],
+      "startedAt": "2026-03-28T23:52:00.468Z",
+      "finishedAt": "2026-03-28T23:52:30.383Z"
+    },
+    {
+      "journeyId": "J04",
+      "journeyName": "Cart Recovery (Expired Session)",
+      "status": "passed",
+      "executionTimeMs": 7045,
+      "partialCompletion": 1,
+      "stepsTotal": 7,
+      "stepsCompleted": 7,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to homepage",
+          "status": "passed",
+          "executionTimeMs": 163
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Add item to cart",
+          "status": "passed",
+          "executionTimeMs": 3265
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Verify item in cart before session expiry",
+          "status": "passed",
+          "executionTimeMs": 141
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Clear session (simulate cart expiry)",
+          "status": "passed",
+          "executionTimeMs": 4
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Navigate back to site after expiry",
+          "status": "passed",
+          "executionTimeMs": 114
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Re-add item to cart (recovery)",
+          "status": "passed",
+          "executionTimeMs": 3206
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify cart recovered successfully",
+          "status": "passed",
+          "executionTimeMs": 152
+        }
+      ],
+      "startedAt": "2026-03-28T23:52:30.605Z",
+      "finishedAt": "2026-03-28T23:52:37.650Z"
+    },
+    {
+      "journeyId": "J14",
+      "journeyName": "Product Comparison",
+      "status": "passed",
+      "executionTimeMs": 4232,
+      "partialCompletion": 1,
+      "stepsTotal": 8,
+      "stepsCompleted": 8,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to product listing",
+          "status": "passed",
+          "executionTimeMs": 144
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Open first product and record details",
+          "status": "passed",
+          "executionTimeMs": 257
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Return to product listing",
+          "status": "passed",
+          "executionTimeMs": 112
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Open second product and record details",
+          "status": "passed",
+          "executionTimeMs": 218
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Compare products and identify cheaper",
           "status": "passed",
           "executionTimeMs": 0
         },
@@ -171,23 +165,23 @@
           "stepIndex": 5,
           "stepName": "Navigate to cheaper product",
           "status": "passed",
-          "executionTimeMs": 313
+          "executionTimeMs": 322
         },
         {
           "stepIndex": 6,
-          "stepName": "Add selected product to cart",
+          "stepName": "Add cheaper product to cart",
           "status": "passed",
-          "executionTimeMs": 3032
+          "executionTimeMs": 3039
         },
         {
           "stepIndex": 7,
-          "stepName": "Verify cart contains product",
+          "stepName": "Verify cart contains selected product",
           "status": "passed",
-          "executionTimeMs": 132
+          "executionTimeMs": 140
         }
       ],
-      "startedAt": "2026-03-29T00:49:41.266Z",
-      "finishedAt": "2026-03-29T00:49:45.428Z"
+      "startedAt": "2026-03-28T23:52:37.874Z",
+      "finishedAt": "2026-03-28T23:52:42.106Z"
     }
   ]
 }
