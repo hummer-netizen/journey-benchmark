@@ -1,0 +1,25 @@
+{
+  "name": "journey-benchmark",
+  "version": "1.0.0",
+  "description": "Browser automation benchmark framework for WebArena shopping journeys",
+  "type": "module",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "benchmark": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "commander": "^12.1.0",
+    "playwright": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.10",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

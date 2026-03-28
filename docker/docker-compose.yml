@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: prestashop
+      MYSQL_USER: prestashop
+      MYSQL_PASSWORD: prestashop
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  shop:
+    image: prestashop/prestashop:latest
+    ports:
+      - "8080:80"
+    environment:
+      DB_SERVER: mysql
+      DB_NAME: prestashop
+      DB_USER: prestashop
+      DB_PASSWD: prestashop
+      PS_INSTALL_AUTO: "1"
+      PS_DOMAIN: localhost:8080
+      PS_FOLDER_ADMIN: admin
+      PS_ACCOUNT_EMAIL: admin@example.com
+      PS_ACCOUNT_PASSWD: admin123
+      PS_LANGUAGE: en
+      PS_COUNTRY: US
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - shop_data:/var/www/html
+
+volumes:
+  mysql_data:
+  shop_data:
