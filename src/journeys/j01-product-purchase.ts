@@ -21,15 +21,19 @@ export class J01ProductPurchase extends BaseJourney {
         name: 'Navigate to homepage',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          // Wait for product listing or search
-          await page.waitForSelector(`${selectors.searchInput}, ${selectors.productLink}`, { timeout: 20000 });
+          await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
         },
       },
       {
-        name: 'Open a product detail page',
+        name: 'Search and open a product detail page',
         execute: async (page: Page) => {
+          const searchInput = await page.$(selectors.searchInput);
+          if (!searchInput) throw new Error('Search input not found');
+          await searchInput.fill(isMagento ? 'book' : 'mug');
+          await searchInput.press('Enter');
+          await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
-          if (!link) throw new Error('No product link found on homepage');
+          if (!link) throw new Error('No product found in search results');
           await link.click();
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
         },
@@ -37,69 +41,75 @@ export class J01ProductPurchase extends BaseJourney {
       {
         name: 'Add product to cart',
         execute: async (page: Page) => {
-          // Magento may need size/color selection before adding to cart
           if (isMagento) {
-            // Select first available size if present
-            const sizeSwatches = await page.$$('[data-role="swatch-option"] [data-option-type="0"], .swatch-option.size, .swatch-attribute.size .swatch-option');
+            // Handle swatch-style configurable options
+            const sizeSwatches = await page.$$('.swatch-attribute.size .swatch-option:not(.disabled)');
             if (sizeSwatches.length > 0) {
               await sizeSwatches[0]!.click();
               await page.waitForTimeout(500);
             }
-            // Select first available color if present
-            const colorSwatches = await page.$$('.swatch-option.color, .swatch-attribute.color .swatch-option');
+            const colorSwatches = await page.$$('.swatch-attribute.color .swatch-option:not(.disabled)');
             if (colorSwatches.length > 0) {
               await colorSwatches[0]!.click();
               await page.waitForTimeout(500);
             }
+            // Handle custom option radio buttons
+            const customOptionRadios = await page.$$('.product-custom-option input[type="radio"]:visible, input[name^="options["]:visible');
+            if (customOptionRadios.length > 0) {
+              await customOptionRadios[0]!.click().catch(() => {});
+              await page.waitForTimeout(300);
+            }
+            // Handle custom option dropdowns
+            const customOptionSelects = await page.$$('.product-custom-option select, select[name^="options["]');
+            for (const sel of customOptionSelects) {
+              const opts = await sel.$$('option');
+              if (opts.length > 1) {
+                const val = await opts[1]!.getAttribute('value');
+                if (val) await sel.selectOption(val).catch(() => {});
+              }
+            }
           }
           await page.click(selectors.addToCartButton);
-          await page.waitForTimeout(3000);
-          // Wait for cart indicator update
+          // Wait for success message (Magento shows it after AJAX add-to-cart)
           if (isMagento) {
-            await page.waitForSelector('.counter-number, .minicart-quantity', { timeout: 10000 }).catch(() => {});
+            await page.waitForSelector('.message-success', { timeout: 15000 }).catch(() => {});
           }
+          await page.waitForTimeout(2000);
         },
       },
       {
         name: 'Proceed to checkout',
         execute: async (page: Page) => {
           if (isMagento) {
-            // Click mini-cart icon then proceed to checkout
-            await page.click(selectors.cartIcon).catch(() => {});
-            await page.waitForTimeout(1000);
-            const checkoutBtn = await page.$(selectors.checkoutButton);
-            if (checkoutBtn) {
-              await checkoutBtn.click();
-            } else {
-              await page.goto(`${baseUrl}/checkout/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            }
+            // Navigate directly to checkout (more reliable than mini-cart click)
+            await page.goto(`${baseUrl}/checkout/`, { waitUntil: 'networkidle', timeout: 60000 });
+            // Wait for Knockout.js to render the checkout form
+            await page.waitForSelector('#customer-email', { state: 'visible', timeout: 30000 });
           } else {
             await page.goto(`${baseUrl}/order`, { waitUntil: 'domcontentloaded', timeout: 15000 });
           }
-          await page.waitForTimeout(3000);
         },
       },
       {
         name: 'Fill shipping information (guest checkout)',
         execute: async (page: Page) => {
           if (isMagento) {
-            // Magento checkout — fill email for guest
-            await page.waitForSelector('#customer-email, #guest-email', { timeout: 20000 }).catch(() => {});
-            const emailField = await page.$('#customer-email, #guest-email, input[name="username"]');
+            // Fill email
+            const emailField = await page.$('#customer-email');
             if (emailField) {
               const ts = Date.now();
               await emailField.fill(`bench_${ts}@example.com`);
               await page.waitForTimeout(500);
             }
 
-            // Fill address fields
-            await page.fill(selectors.firstNameInput, credentials.firstName).catch(() => {});
-            await page.fill(selectors.lastNameInput, credentials.lastName).catch(() => {});
-            await page.fill(selectors.addressInput, credentials.address).catch(() => {});
-            await page.fill(selectors.cityInput, credentials.city).catch(() => {});
+            // Fill address fields (use generic input selectors since Magento generates random IDs)
+            await page.fill('input[name="firstname"]', credentials.firstName);
+            await page.fill('input[name="lastname"]', credentials.lastName);
+            await page.fill('input[name="street[0]"]', credentials.address);
+            await page.fill('input[name="city"]', credentials.city);
 
             // Select state
-            const stateSelect = await page.$(selectors.stateInput);
+            const stateSelect = await page.$('select[name="region_id"]');
             if (stateSelect) {
               await stateSelect.selectOption({ label: credentials.state }).catch(async () => {
                 const opts = await stateSelect.$$('option');
@@ -113,12 +123,11 @@ export class J01ProductPurchase extends BaseJourney {
               });
             }
 
-            await page.fill(selectors.postcodeInput, credentials.postcode).catch(() => {});
-            await page.fill(selectors.phoneInput, credentials.phone).catch(() => {});
+            await page.fill('input[name="postcode"]', credentials.postcode);
+            await page.fill('input[name="telephone"]', credentials.phone);
             await page.waitForTimeout(1000);
           } else {
-            // PrestaShop — guest checkout flow
-            // Step 1: Personal info
+            // PrestaShop guest checkout
             await page.waitForSelector('input[name="firstname"]', { timeout: 15000 });
             await page.fill('input[name="firstname"]', credentials.firstName);
             await page.fill('input[name="lastname"]', credentials.lastName);
@@ -132,17 +141,14 @@ export class J01ProductPurchase extends BaseJourney {
             await page.click('button[data-link-action="register-new-customer"]');
             await page.waitForTimeout(3000);
 
-            // Step 2: Fill delivery address
             await page.waitForSelector('input[name="address1"]', { timeout: 10000 });
             await page.fill('input[name="address1"]', credentials.address);
             await page.fill('input[name="city"]', credentials.city);
             await page.fill('input[name="postcode"]', credentials.postcode);
 
-            // Select state (required for US addresses in PrestaShop)
             const stateSelect = await page.$('select[name="id_state"]');
             if (stateSelect) {
               await stateSelect.selectOption({ label: credentials.state }).catch(async () => {
-                // Fallback: select first non-empty option
                 const opts = await stateSelect.$$('option');
                 for (const opt of opts) {
                   const val = await opt.getAttribute('value');
@@ -159,7 +165,6 @@ export class J01ProductPurchase extends BaseJourney {
               await phoneInput.fill(credentials.phone);
             }
 
-            // Confirm address
             await page.click('button[name="confirm-addresses"]');
             await page.waitForTimeout(3000);
           }
@@ -169,18 +174,20 @@ export class J01ProductPurchase extends BaseJourney {
         name: 'Select shipping method',
         execute: async (page: Page) => {
           if (isMagento) {
-            // Wait for shipping methods to appear
-            await page.waitForSelector('.table-checkout-shipping-method, [data-th="Carrier"]', { timeout: 15000 }).catch(() => {});
-            // Click first available shipping method
-            const shippingMethod = await page.$('input[name="ko_unique_1"], input[name="shipping_method"]');
-            if (shippingMethod) {
-              await shippingMethod.check().catch(() => {});
-            }
+            // Wait for shipping methods to load
+            await page.waitForSelector('input[type="radio"][name^="ko_unique"], input[name="shipping_method"]', { timeout: 15000 }).catch(() => {});
+            // Select first radio
+            const radio = await page.$('input[type="radio"][name^="ko_unique"]:not(:checked), input[name="shipping_method"]:not(:checked)');
+            if (radio) await radio.check().catch(() => {});
             await page.waitForTimeout(1000);
-            // Click "Next" button
-            const nextBtn = await page.$('button.continue, .button-action.action.continue, button[data-role="opc-continue"]');
-            if (nextBtn) await nextBtn.click();
-            await page.waitForTimeout(2000);
+            // Click "Next"
+            const nextBtn = await page.$('button.continue, button[data-role="opc-continue"]');
+            if (nextBtn) {
+              await nextBtn.click();
+              // Wait for payment step to load
+              await page.waitForSelector('#checkout-payment-method-load, .payment-methods', { timeout: 20000 }).catch(() => {});
+              await page.waitForTimeout(2000);
+            }
           } else {
             await page.waitForSelector('button[name="confirmDeliveryOption"]', { timeout: 10000 });
             await page.click('button[name="confirmDeliveryOption"]');
@@ -192,20 +199,21 @@ export class J01ProductPurchase extends BaseJourney {
         name: 'Complete payment and place order',
         execute: async (page: Page) => {
           if (isMagento) {
-            // Wait for payment step
-            await page.waitForSelector('#checkout-payment-method-load, .payment-methods', { timeout: 20000 }).catch(() => {});
+            // Wait for payment methods to be visible
+            await page.waitForSelector('.payment-method', { timeout: 20000 }).catch(() => {});
 
-            // Select "Check / Money order" (free option in WebArena)
+            // Select "Check / Money order"
             const checkmo = await page.$('#checkmo, input[value="checkmo"]');
             if (checkmo) await checkmo.click().catch(() => {});
-
             await page.waitForTimeout(1000);
 
             // Click "Place Order"
-            const placeOrderBtn = await page.$('.checkout.action.primary, button.action.primary.checkout, ' + selectors.placeOrderButton);
+            const placeOrderBtn = await page.$('button.action.primary.checkout, button.checkout[title="Place Order"]');
             if (!placeOrderBtn) throw new Error('Place Order button not found');
             await placeOrderBtn.click();
-            await page.waitForTimeout(10000);
+            // Wait for redirect to success page
+            await page.waitForURL('**/checkout/onepage/success/**', { timeout: 30000 }).catch(() => {});
+            await page.waitForTimeout(3000);
           } else {
             const paymentOption = await page.$('input[name="payment-option"]');
             if (paymentOption) {

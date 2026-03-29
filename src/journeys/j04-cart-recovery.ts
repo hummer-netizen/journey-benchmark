@@ -22,43 +22,68 @@ export class J04CartRecovery extends BaseJourney {
         name: 'Navigate to homepage',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await page.waitForSelector(`${selectors.searchInput}, ${selectors.productLink}`, { timeout: 20000 });
+          await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
         },
       },
       {
-        name: 'Add item to cart',
+        name: 'Search and add item to cart',
         execute: async (page: Page) => {
+          const searchInput = await page.$(selectors.searchInput);
+          if (!searchInput) throw new Error('Search input not found');
+          await searchInput.fill(isMagento ? 'battery' : 'mug');
+          await searchInput.press('Enter');
+          await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
-          if (!link) throw new Error('No product found on homepage');
+          if (!link) throw new Error('No product found in search results');
           await link.click();
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
-          // For Magento: may need swatch selections
+          // Select options if configurable or custom-option product
           if (isMagento) {
-            const swatches = await page.$$('.swatch-option:not(.disabled)');
-            for (const swatch of swatches.slice(0, 2)) {
-              await swatch.click().catch(() => {});
+            const sizeSwatches = await page.$$('.swatch-attribute.size .swatch-option:not(.disabled)');
+            if (sizeSwatches.length > 0) {
+              await sizeSwatches[0]!.click();
+              await page.waitForTimeout(500);
+            }
+            const colorSwatches = await page.$$('.swatch-attribute.color .swatch-option:not(.disabled)');
+            if (colorSwatches.length > 0) {
+              await colorSwatches[0]!.click();
+              await page.waitForTimeout(500);
+            }
+            const customOptionRadios = await page.$$('.product-custom-option input[type="radio"]:visible, input[name^="options["]:visible');
+            if (customOptionRadios.length > 0) {
+              await customOptionRadios[0]!.click().catch(() => {});
               await page.waitForTimeout(300);
+            }
+            const customOptionSelects = await page.$$('.product-custom-option select, select[name^="options["]');
+            for (const sel of customOptionSelects) {
+              const opts = await sel.$$('option');
+              if (opts.length > 1) {
+                const val = await opts[1]!.getAttribute('value');
+                if (val) await sel.selectOption(val).catch(() => {});
+              }
             }
           }
 
           await page.click(selectors.addToCartButton);
-          await page.waitForTimeout(3000);
+          if (isMagento) {
+            await page.waitForSelector('.message-success', { timeout: 15000 }).catch(() => {});
+          }
+          await page.waitForTimeout(2000);
         },
       },
       {
         name: 'Verify item in cart before session expiry',
         execute: async (page: Page) => {
-          await page.goto(cartUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });
+          await page.waitForTimeout(3000);
           const hasItems = await page.waitForFunction(
             () => {
-              // Magento cart items
-              const magento = document.querySelectorAll('.cart.item, .cart-item, tbody.cart.item');
-              // PrestaShop cart items
-              const presta = document.querySelectorAll('.cart__item, .product-line, .cart-item');
+              const magento = document.querySelectorAll('.cart.item, tbody.cart.item');
+              const presta = document.querySelectorAll('.cart__item, .product-line');
               return magento.length > 0 || presta.length > 0;
             },
-            { timeout: 10000 },
+            { timeout: 15000 },
           ).catch(() => null);
           if (!hasItems) throw new Error('Cart is empty after adding product');
         },
@@ -79,40 +104,67 @@ export class J04CartRecovery extends BaseJourney {
         name: 'Navigate back to site after expiry',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await page.waitForSelector(`${selectors.searchInput}, ${selectors.productLink}`, { timeout: 20000 });
+          await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
         },
       },
       {
         name: 'Re-add item to cart (recovery)',
         execute: async (page: Page) => {
+          const searchInput = await page.$(selectors.searchInput);
+          if (!searchInput) throw new Error('Search input not found after session clear');
+          await searchInput.fill(isMagento ? 'battery' : 'mug');
+          await searchInput.press('Enter');
+          await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found after session clear');
           await link.click();
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           if (isMagento) {
-            const swatches = await page.$$('.swatch-option:not(.disabled)');
-            for (const swatch of swatches.slice(0, 2)) {
-              await swatch.click().catch(() => {});
+            const sizeSwatches = await page.$$('.swatch-attribute.size .swatch-option:not(.disabled)');
+            if (sizeSwatches.length > 0) {
+              await sizeSwatches[0]!.click();
+              await page.waitForTimeout(500);
+            }
+            const colorSwatches = await page.$$('.swatch-attribute.color .swatch-option:not(.disabled)');
+            if (colorSwatches.length > 0) {
+              await colorSwatches[0]!.click();
+              await page.waitForTimeout(500);
+            }
+            const customOptionRadios = await page.$$('.product-custom-option input[type="radio"]:visible, input[name^="options["]:visible');
+            if (customOptionRadios.length > 0) {
+              await customOptionRadios[0]!.click().catch(() => {});
               await page.waitForTimeout(300);
+            }
+            const customOptionSelects = await page.$$('.product-custom-option select, select[name^="options["]');
+            for (const sel of customOptionSelects) {
+              const opts = await sel.$$('option');
+              if (opts.length > 1) {
+                const val = await opts[1]!.getAttribute('value');
+                if (val) await sel.selectOption(val).catch(() => {});
+              }
             }
           }
 
           await page.click(selectors.addToCartButton);
-          await page.waitForTimeout(3000);
+          if (isMagento) {
+            await page.waitForSelector('.message-success', { timeout: 15000 }).catch(() => {});
+          }
+          await page.waitForTimeout(2000);
         },
       },
       {
         name: 'Verify cart recovered successfully',
         execute: async (page: Page) => {
-          await page.goto(cartUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });
+          await page.waitForTimeout(3000);
           const hasItems = await page.waitForFunction(
             () => {
-              const magento = document.querySelectorAll('.cart.item, .cart-item, tbody.cart.item');
-              const presta = document.querySelectorAll('.cart__item, .product-line, .cart-item');
+              const magento = document.querySelectorAll('.cart.item, tbody.cart.item');
+              const presta = document.querySelectorAll('.cart__item, .product-line');
               return magento.length > 0 || presta.length > 0;
             },
-            { timeout: 10000 },
+            { timeout: 15000 },
           ).catch(() => null);
           if (!hasItems) throw new Error('Cart recovery failed — cart is empty after re-adding items');
           console.log(`  Cart recovery verified`);

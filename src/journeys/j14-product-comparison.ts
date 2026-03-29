@@ -56,20 +56,21 @@ export class J14ProductComparison extends BaseJourney {
 
     return [
       {
-        name: 'Navigate to product listing',
+        name: 'Search for products',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
+          // Use search to find products (WebArena homepage is CMS, no product grid)
+          const searchInput = await page.$(selectors.searchInput);
+          if (!searchInput) throw new Error('Search input not found');
+          await searchInput.fill(isMagento ? 'lamp' : 'mug');
+          await searchInput.press('Enter');
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
 
           // Verify at least 2 products available
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) {
-            // Navigate to a category page for more products
-            const catLink = isMagento
-              ? await page.$('nav.navigation a, .category-link:not([href*="clearance"])')
-              : await page.$('.category-link a, .top-menu a');
-            if (catLink) await catLink.click();
-            await page.waitForSelector(selectors.productLink, { timeout: 15000 });
+            throw new Error(`Need at least 2 products, found ${links.length}`);
           }
         },
       },
@@ -136,28 +137,53 @@ export class J14ProductComparison extends BaseJourney {
         name: 'Add cheaper product to cart',
         execute: async (page: Page) => {
           if (isMagento) {
-            const swatches = await page.$$('.swatch-option:not(.disabled)');
-            for (const swatch of swatches.slice(0, 2)) {
-              await swatch.click().catch(() => {});
+            // Handle swatch-style configurable options
+            const sizeSwatches = await page.$$('.swatch-attribute.size .swatch-option:not(.disabled)');
+            if (sizeSwatches.length > 0) {
+              await sizeSwatches[0]!.click();
+              await page.waitForTimeout(500);
+            }
+            const colorSwatches = await page.$$('.swatch-attribute.color .swatch-option:not(.disabled)');
+            if (colorSwatches.length > 0) {
+              await colorSwatches[0]!.click();
+              await page.waitForTimeout(500);
+            }
+            // Handle custom option radio buttons (e.g. color options as radios)
+            const customOptionRadios = await page.$$('.product-custom-option input[type="radio"]:visible, input[name^="options["]:visible');
+            if (customOptionRadios.length > 0) {
+              await customOptionRadios[0]!.click().catch(() => {});
               await page.waitForTimeout(300);
+            }
+            // Handle custom option dropdowns
+            const customOptionSelects = await page.$$('.product-custom-option select, select[name^="options["]');
+            for (const sel of customOptionSelects) {
+              const opts = await sel.$$('option');
+              if (opts.length > 1) {
+                const val = await opts[1]!.getAttribute('value');
+                if (val) await sel.selectOption(val).catch(() => {});
+              }
             }
           }
           await page.click(selectors.addToCartButton);
-          await page.waitForTimeout(3000);
+          if (isMagento) {
+            await page.waitForSelector('.message-success', { timeout: 15000 }).catch(() => {});
+          }
+          await page.waitForTimeout(2000);
         },
       },
       {
         name: 'Verify cart contains selected product',
         execute: async (page: Page) => {
           const cartUrl = isMagento ? `${baseUrl}/checkout/cart/` : `${baseUrl}/cart`;
-          await page.goto(cartUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });
+          await page.waitForTimeout(3000);
           const hasItems = await page.waitForFunction(
             () => {
-              const magento = document.querySelectorAll('.cart.item, .cart-item, tbody.cart.item');
-              const presta = document.querySelectorAll('.cart__item, .product-line, .cart-item');
+              const magento = document.querySelectorAll('.cart.item, tbody.cart.item');
+              const presta = document.querySelectorAll('.cart__item, .product-line');
               return magento.length > 0 || presta.length > 0;
             },
-            { timeout: 10000 },
+            { timeout: 15000 },
           ).catch(() => null);
           if (!hasItems) throw new Error('Cart appears empty after adding cheaper product');
         },
