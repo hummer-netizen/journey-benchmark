@@ -23,13 +23,26 @@ program
   .version('1.0.0')
   .option('--provider <type>', 'Automation provider: direct | webfuse', 'direct')
   .option('--journeys <list>', 'Comma-separated journey IDs to run (e.g. J01,J04,J14)', 'J01,J04,J14')
+  .option('--site <type>', 'Target site type: webarena | prestashop | magento (default: webarena)', 'webarena')
+  .option('--shop-url <url>', 'Override target shop URL', '')
+  .option('--space-url <url>', 'Webfuse space URL to use for Webfuse provider', '')
   .option('--headless', 'Run browser in headless mode', true)
   .option('--no-headless', 'Run browser in non-headless mode')
   .option('--db <path>', 'Path to SQLite database', dbPath)
   .option('--reports <dir>', 'Output directory for reports', reportsDir)
   .action(async (options) => {
-    // Set provider env var
+    // Set provider and site env vars
     process.env['AUTOMATION_PROVIDER'] = options.provider;
+    process.env['SITE_TYPE'] = options.site;
+    if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl;
+    if (options.spaceUrl) process.env['WEBFUSE_SPACE_URL'] = options.spaceUrl;
+
+    // When using Webfuse provider, always use the public tunnel URL
+    // so journeys navigate through the Surfly proxy rather than localhost
+    if (options.provider === 'webfuse') {
+      const webfuseTarget = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
+      process.env['SHOP_URL'] = webfuseTarget;
+    }
 
     const config = getSiteConfig();
     const journeyIds: string[] = options.journeys.split(',').map((j: string) => j.trim().toUpperCase());
@@ -52,6 +65,7 @@ program
     console.log(`\nJourney Benchmark`);
     console.log(`   Provider: ${options.provider}`);
     console.log(`   Journeys: ${journeyIds.join(', ')}`);
+    console.log(`   Site:     ${options.site}`);
     console.log(`   Target:   ${config.baseUrl}`);
     console.log(`   Headless: ${options.headless}`);
 
@@ -67,6 +81,7 @@ program
       provider,
       journeys: selectedJourneys,
       baseUrl: config.baseUrl,
+      site: options.site,
     });
 
     let exitCode = 0;

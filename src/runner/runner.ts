@@ -7,6 +7,7 @@ export interface RunnerOptions {
   provider: AutomationProvider;
   journeys: Journey[];
   baseUrl: string;
+  site: string;
   /** Called when a journey completes */
   onJourneyComplete?: (result: JourneyResult) => void;
 }
@@ -107,6 +108,8 @@ export class BenchmarkRunner {
       startedAt,
       finishedAt: new Date().toISOString(),
       provider: this.options.provider.constructor.name,
+      site: this.options.site,
+      targetUrl: this.options.baseUrl,
       totalJourneys: journeyResults.length,
       passed,
       failed,

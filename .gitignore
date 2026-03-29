@@ -2,8 +2,10 @@ node_modules/
 dist/
 reports/*.json
 reports/*.md
-!reports/example-run.json
-!reports/example-run.md
+!reports/example-direct-run.json
+!reports/example-direct-run.md
+!reports/example-webfuse-run.json
+!reports/example-webfuse-run.md
 *.db
 .env
 .env.local
