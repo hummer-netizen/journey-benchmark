@@ -2,12 +2,15 @@ import type { Page } from 'playwright';
 import type { Journey, JourneyResult, RunResult } from '../types.js';
 import type { AutomationProvider } from '../webfuse/provider.js';
 import { MetricCollector } from '../metrics/collector.js';
+import { startTrace, stopTrace, type TraceConfig } from './trace.js';
 
 export interface RunnerOptions {
   provider: AutomationProvider;
   journeys: Journey[];
   baseUrl: string;
   site: string;
+  /** Playwright trace/HAR/screenshot capture settings */
+  trace?: TraceConfig;
   /** Called when a journey completes */
   onJourneyComplete?: (result: JourneyResult) => void;
 }
@@ -67,8 +70,16 @@ export class BenchmarkRunner {
         let page: Page | null = null;
         try {
           page = await this.options.provider.openUrl(this.options.baseUrl);
+          const traceConfig = this.options.trace;
+          if (traceConfig?.enabled) {
+            await startTrace(page.context(), traceConfig).catch(() => {});
+          }
           const collector = new MetricCollector();
           result = await journey.execute(page, collector);
+          if (traceConfig?.enabled) {
+            const tracePath = await stopTrace(page.context(), journey.id, traceConfig).catch(() => null);
+            if (tracePath) console.log(`  Trace: ${tracePath}`);
+          }
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           result = {
