@@ -109,10 +109,17 @@ export const WEBARENA_CONFIG: SiteConfig = {
   },
 };
 
-/** Determine which config to use based on SITE_TYPE env var */
+/** Determine which config to use based on SITE_TYPE env var (evaluated at call time) */
 export function getSiteConfig(): SiteConfig {
   const siteType = process.env['SITE_TYPE'] ?? 'webarena';
-  if (siteType === 'prestashop') return PRESTASHOP_CONFIG;
-  if (siteType === 'magento') return MAGENTO_CONFIG;
-  return WEBARENA_CONFIG;
+  const shopUrl = process.env['SHOP_URL'];
+
+  if (siteType === 'prestashop') {
+    return { ...PRESTASHOP_CONFIG, baseUrl: shopUrl ?? PRESTASHOP_CONFIG.baseUrl };
+  }
+  if (siteType === 'magento') {
+    return { ...MAGENTO_CONFIG, baseUrl: shopUrl ?? MAGENTO_CONFIG.baseUrl };
+  }
+  // webarena
+  return { ...WEBARENA_CONFIG, baseUrl: shopUrl ?? WEBARENA_CONFIG.baseUrl };
 }

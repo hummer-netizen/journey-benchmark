@@ -30,12 +30,18 @@ export class J04CartRecovery extends BaseJourney {
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found');
-          await searchInput.fill(isMagento ? 'battery' : 'mug');
+          await searchInput.fill(isMagento ? 'book' : 'mug');
           await searchInput.press('Enter');
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found in search results');
-          await link.click();
+          // Use goto(href) so proxy-frame navigation works (link clicks may not navigate in Surfly)
+          const href = await link.getAttribute('href');
+          if (href) {
+            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          } else {
+            await link.click();
+          }
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           // Select options if configurable or custom-option product
@@ -91,9 +97,21 @@ export class J04CartRecovery extends BaseJourney {
       {
         name: 'Clear session (simulate cart expiry)',
         execute: async (page: Page) => {
+          // Clear outer Playwright context cookies (direct provider)
           const context = page.context();
           await context.clearCookies();
+          // Also clear cookies and storage via JS in the page/frame context.
+          // This is necessary for proxy providers (e.g. Webfuse/Surfly) where the proxied
+          // session cookies are not accessible through the outer Playwright context.
           await page.evaluate(() => {
+            document.cookie.split(';').forEach(c => {
+              const name = c.trim().split('=')[0];
+              if (name) {
+                // Clear for current path/domain and root
+                document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + location.hostname;
+              }
+            });
             try { localStorage.clear(); } catch {}
             try { sessionStorage.clear(); } catch {}
           });
@@ -112,12 +130,18 @@ export class J04CartRecovery extends BaseJourney {
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found after session clear');
-          await searchInput.fill(isMagento ? 'battery' : 'mug');
+          await searchInput.fill(isMagento ? 'book' : 'mug');
           await searchInput.press('Enter');
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found after session clear');
-          await link.click();
+          // Use goto(href) so proxy-frame navigation works
+          const href = await link.getAttribute('href');
+          if (href) {
+            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          } else {
+            await link.click();
+          }
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           if (isMagento) {

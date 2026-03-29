@@ -14,6 +14,7 @@ export class J14ProductComparison extends BaseJourney {
   name = 'Product Comparison';
   steps: JourneyStep[];
   private products: ProductInfo[] = [];
+  private searchResultsUrl = '';
 
   constructor(config: SiteConfig) {
     super(config);
@@ -72,6 +73,8 @@ export class J14ProductComparison extends BaseJourney {
           if (links.length < 2) {
             throw new Error(`Need at least 2 products, found ${links.length}`);
           }
+          // Save the search results URL for later navigation (goBack unreliable in proxy frames)
+          this.searchResultsUrl = page.url();
         },
       },
       {
@@ -79,7 +82,13 @@ export class J14ProductComparison extends BaseJourney {
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error(`Need at least 2 products, found ${links.length}`);
-          await links[0]!.click();
+          // Use goto(href) so proxy-frame navigation is reliable (link clicks may not navigate in Surfly)
+          const href = await links[0]!.getAttribute('href');
+          if (href) {
+            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          } else {
+            await links[0]!.click();
+          }
           await page.waitForSelector(isMagento ? '.price-box' : selectors.productPrice, { timeout: 20000 });
           const product = await this.extractProductInfo(page, 0);
           this.products.push(product);
@@ -89,7 +98,8 @@ export class J14ProductComparison extends BaseJourney {
       {
         name: 'Return to product listing',
         execute: async (page: Page) => {
-          await page.goBack({ waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Use goto instead of goBack — goBack is unreliable in proxy frames (Surfly)
+          await page.goto(this.searchResultsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.productLink, { timeout: 15000 });
         },
       },
@@ -98,7 +108,13 @@ export class J14ProductComparison extends BaseJourney {
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error('Second product not found in listing');
-          await links[1]!.click();
+          // Use goto(href) so proxy-frame navigation is reliable
+          const href = await links[1]!.getAttribute('href');
+          if (href) {
+            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          } else {
+            await links[1]!.click();
+          }
           await page.waitForSelector(isMagento ? '.price-box' : selectors.productPrice, { timeout: 20000 });
           const product = await this.extractProductInfo(page, 1);
           this.products.push(product);
@@ -125,10 +141,17 @@ export class J14ProductComparison extends BaseJourney {
           const cheaperIndex = p1.price <= p2.price ? 0 : 1;
           const cheaper = this.products[cheaperIndex]!;
 
-          await page.goBack({ waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Navigate back to search results (goto is reliable; goBack is not in proxy frames)
+          await page.goto(this.searchResultsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.productLink, { timeout: 15000 });
           const links = await page.$$(selectors.productLink);
-          await links[cheaperIndex]!.click();
+          // Use goto(href) so proxy-frame navigation is reliable
+          const href = await links[cheaperIndex]!.getAttribute('href');
+          if (href) {
+            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          } else {
+            await links[cheaperIndex]!.click();
+          }
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
           console.log(`  Selected: "${cheaper.name}"`);
         },

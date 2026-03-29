@@ -76,6 +76,8 @@ describe('Metrics', () => {
         startedAt: '2026-01-01T00:00:00Z',
         finishedAt: '2026-01-01T00:01:00Z',
         provider: 'test',
+        site: 'webarena',
+        targetUrl: 'http://localhost:7770',
         totalJourneys: 3,
         passed: 3,
         failed: 0,

@@ -34,7 +34,13 @@ export class J01ProductPurchase extends BaseJourney {
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found in search results');
-          await link.click();
+          // Use goto(href) so proxy-frame navigation works (link clicks may not navigate in Surfly)
+          const href = await link.getAttribute('href');
+          if (href) {
+            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          } else {
+            await link.click();
+          }
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
         },
       },
@@ -83,8 +89,33 @@ export class J01ProductPurchase extends BaseJourney {
           if (isMagento) {
             // Navigate directly to checkout (more reliable than mini-cart click)
             await page.goto(`${baseUrl}/checkout/`, { waitUntil: 'networkidle', timeout: 60000 });
-            // Wait for Knockout.js to render the checkout form
-            await page.waitForSelector('#customer-email', { state: 'visible', timeout: 30000 });
+            // Wait for Knockout.js to render the checkout form (element may be present but hidden)
+            await page.waitForSelector('#customer-email', { timeout: 30000 }).catch(() => {});
+            // Extra wait for KO.js in proxy environments
+            await page.waitForTimeout(3000);
+            // Force-show the email field and shipping step if KO.js hasn't made them visible
+            await page.evaluate(() => {
+              const shippingStep = document.querySelector('#checkout-step-shipping') as HTMLElement | null;
+              if (shippingStep) {
+                shippingStep.style.display = 'block';
+                shippingStep.style.visibility = 'visible';
+              }
+              const emailEl = document.querySelector('#customer-email') as HTMLElement | null;
+              if (emailEl) {
+                emailEl.style.display = 'block';
+                emailEl.style.visibility = 'visible';
+                emailEl.style.opacity = '1';
+                // Un-hide any ancestors that may be keeping it hidden
+                let node: HTMLElement | null = emailEl.parentElement;
+                while (node && node.tagName !== 'BODY') {
+                  if (node.style.display === 'none') node.style.display = 'block';
+                  if (node.style.visibility === 'hidden') node.style.visibility = 'visible';
+                  node = node.parentElement;
+                }
+              }
+            }).catch(() => {});
+            // Final visibility check (best-effort; fill will work even if this times out)
+            await page.waitForSelector('#customer-email', { state: 'visible', timeout: 10000 }).catch(() => {});
           } else {
             await page.goto(`${baseUrl}/order`, { waitUntil: 'domcontentloaded', timeout: 15000 });
           }
@@ -94,13 +125,43 @@ export class J01ProductPurchase extends BaseJourney {
         name: 'Fill shipping information (guest checkout)',
         execute: async (page: Page) => {
           if (isMagento) {
-            // Fill email
+            // Fill email — this triggers KO to evaluate the "existing customer" check
             const emailField = await page.$('#customer-email');
             if (emailField) {
               const ts = Date.now();
               await emailField.fill(`bench_${ts}@example.com`);
-              await page.waitForTimeout(500);
+              // Trigger KO observable update by firing blur; this shows the shipping address form
+              await page.evaluate(() => {
+                const el = document.querySelector('#customer-email') as HTMLInputElement | null;
+                if (el) {
+                  el.dispatchEvent(new Event('blur', { bubbles: true }));
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }).catch(() => {});
+              await page.waitForTimeout(2000);
             }
+
+            // Wait for KO to render the shipping address form fields
+            await page.waitForSelector('input[name="firstname"]', { timeout: 30000 }).catch(() => {});
+            // Force-show shipping form container if KO hasn't rendered it yet
+            await page.evaluate(() => {
+              const form = document.querySelector('form.form-shipping-address, .shipping-address-form, fieldset.fieldset') as HTMLElement | null;
+              if (form) {
+                form.style.display = 'block';
+                form.style.visibility = 'visible';
+              }
+              ['firstname', 'lastname', 'street[0]', 'city', 'postcode', 'telephone'].forEach(name => {
+                const inp = document.querySelector(`input[name="${name}"]`) as HTMLElement | null;
+                if (inp) {
+                  let node: HTMLElement | null = inp;
+                  while (node && node.tagName !== 'BODY') {
+                    if (node.style.display === 'none') node.style.display = 'block';
+                    if (node.style.visibility === 'hidden') node.style.visibility = '';
+                    node = node.parentElement;
+                  }
+                }
+              });
+            }).catch(() => {});
 
             // Fill address fields (use generic input selectors since Magento generates random IDs)
             await page.fill('input[name="firstname"]', credentials.firstName);

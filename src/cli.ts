@@ -37,6 +37,13 @@ program
     if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl;
     if (options.spaceUrl) process.env['WEBFUSE_SPACE_URL'] = options.spaceUrl;
 
+    // When using Webfuse provider, always use the public tunnel URL
+    // so journeys navigate through the Surfly proxy rather than localhost
+    if (options.provider === 'webfuse') {
+      const webfuseTarget = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
+      process.env['SHOP_URL'] = webfuseTarget;
+    }
+
     const config = getSiteConfig();
     const journeyIds: string[] = options.journeys.split(',').map((j: string) => j.trim().toUpperCase());
 

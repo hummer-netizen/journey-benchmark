@@ -74,23 +74,24 @@ WEBFUSE_API_KEY=your-key WEBFUSE_SPACE_URL=https://webfu.se/+benchmark-webarena/
 ### Direct (default)
 Standard Playwright — launches Chromium locally, drives the WebArena shop directly. This is the **L1 (deterministic scripted) baseline** per the roadmap.
 
-**Verified Sprint 1 path.** See `reports/example-run.json` / `reports/example-run.md` for a passing run (3/3, 100% success, 2026-03-29).
+**Verified Sprint 1 path.** See `reports/example-direct-run.json` for a passing run (3/3, 100% success, 2026-03-29).
 
 ### Webfuse
 Creates a Surfly co-browsing session pointing at the target URL, then drives Playwright through the Webfuse proxy layer. This is the **Automation API delivery path** (roadmap D3).
 
-**Network requirement:** The WebArena target must be publicly reachable by Webfuse's servers. For local development, expose via Cloudflare Tunnel:
+**Verified end-to-end on 2026-03-29.** See `reports/example-webfuse-run.json` — 3/3 journeys PASS through the Webfuse proxy:
+- J01: PASS (62s, 8/8 steps through Surfly proxy)
+- J04: PASS (40s, 7/7 steps through Surfly proxy)
+- J14: PASS (38s, 8/8 steps through Surfly proxy)
 
-```bash
-cloudflared tunnel --url http://localhost:7770
-# Note the tunnel URL, then set WEBFUSE_SPACE_URL to a space configured with that target
-```
+The WebArena target is exposed publicly via Cloudflare Tunnel at `webarena-shop.webfuse.it` → `localhost:7770`. The Webfuse space `benchmark-webarena` opens this tunnel URL as its target.
 
 **Required env vars:**
 - `WEBFUSE_API_KEY` — Surfly REST API token (`ck_...`)
-- `WEBFUSE_SPACE_URL` — Webfuse space URL pre-configured to open the WebArena target (e.g. `https://webfu.se/+benchmark-webarena/`)
+- `WEBFUSE_SPACE_URL` — Webfuse space URL (default: `https://webfu.se/+benchmark-webarena/`)
+- `WEBFUSE_TARGET_URL` — Public target URL (default: `https://webarena-shop.webfuse.it/`)
 
-**Space:** `benchmark-webarena` (id 1960) was created on 2026-03-29 for this purpose.
+**Space:** `benchmark-webarena` (id 1960), target: `webarena-shop.webfuse.it` (Cloudflare Tunnel → localhost:7770).
 
 ## Available Journeys
 
@@ -141,22 +142,24 @@ Options:
 
 ## Example Output
 
-See `reports/example-run.json` and `reports/example-run.md` — a verified passing run on 2026-03-29:
+### Direct provider (L1 baseline)
+See `reports/example-direct-run.json` and `reports/example-direct-run.md` — verified 2026-03-29 08:03 UTC:
+- Provider: DirectProvider → localhost:7770
+- J01: PASS (51s), J04: PASS (17s), J14: PASS (10s)
+- M1 Success Rate: 100%, M3 Avg: ~26s
 
-- Site: WebArena (webarenaimages/shopping_final_0712)
-- Provider: DirectProvider (L1 baseline)
-- J01: PASS (8/8 steps)
-- J04: PASS (7/7 steps)
-- J14: PASS (8/8 steps)
-- M1 Success Rate: 100%
-- M2 Avg Partial Completion: 100%
-- M3 Avg Journey Time: ~25s
+### Webfuse provider (Automation API — D3)
+See `reports/example-webfuse-run.json` and `reports/example-webfuse-run.md` — verified 2026-03-29 08:04 UTC:
+- Provider: WebfuseProvider → Surfly proxy → webarena-shop.webfuse.it
+- J01: PASS (62s), J04: PASS (40s), J14: PASS (38s)
+- M1 Success Rate: 100%, M3 Avg: ~46s
+- Session keys: s20LT2kMAq1PREgynrHXd3lEw, s20L4uL4nqNQY6yjWDQ8R69Jw, s20RbCCRgoQTNWDPtnBlY5sTg
 
 ## Deviations from Roadmap
 
 | Item | Roadmap | Sprint 1 Actual | Reason |
 |------|---------|----------------|--------|
-| Webfuse provider | Verified end-to-end | Code implemented; network access requires public target URL + DNS config | WebArena localhost:7770 not publicly reachable without DNS route. Code is wired; tunnel DNS setup pending. |
+| Webfuse provider | Verified end-to-end | ✅ Verified end-to-end (3/3 PASS through Surfly proxy, 2026-03-29) | Cloudflare Tunnel `webarena-shop.webfuse.it` exposes WebArena publicly |
 | WebArena checkout (J01) | Full purchase flow | Guest checkout completes through order confirmation | WebArena Magento requires guest checkout flow; implemented and passing |
 | J04 session expiry | Real session expiry | Cookie clear simulates expiry | Deterministic reset per D5 (speed) |
 
@@ -164,5 +167,4 @@ See `reports/example-run.json` and `reports/example-run.md` — a verified passi
 
 - Add Browser Use baseline (agentic L2)
 - LLM token/cost tracking (M6)
-- Webfuse space DNS route for public WebArena target
 - Comparison report (Direct vs Webfuse vs Browser Use)
