@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-03-28T23:52:00.121Z",
-  "finishedAt": "2026-03-28T23:52:42.110Z",
+  "startedAt": "2026-03-29T00:03:16.054Z",
+  "finishedAt": "2026-03-29T00:03:58.097Z",
   "provider": "DirectProvider",
   "totalJourneys": 3,
   "passed": 3,
@@ -10,7 +10,7 @@
       "journeyId": "J01",
       "journeyName": "Simple Product Purchase",
       "status": "passed",
-      "executionTimeMs": 29915,
+      "executionTimeMs": 29990,
       "partialCompletion": 1,
       "stepsTotal": 8,
       "stepsCompleted": 8,
@@ -19,43 +19,43 @@
           "stepIndex": 0,
           "stepName": "Navigate to homepage",
           "status": "passed",
-          "executionTimeMs": 122
+          "executionTimeMs": 132
         },
         {
           "stepIndex": 1,
           "stepName": "Open a product detail page",
           "status": "passed",
-          "executionTimeMs": 230
+          "executionTimeMs": 225
         },
         {
           "stepIndex": 2,
           "stepName": "Add product to cart",
           "status": "passed",
-          "executionTimeMs": 3050
+          "executionTimeMs": 3053
         },
         {
           "stepIndex": 3,
           "stepName": "Proceed to checkout",
           "status": "passed",
-          "executionTimeMs": 3120
+          "executionTimeMs": 3131
         },
         {
           "stepIndex": 4,
           "stepName": "Fill shipping information (guest checkout)",
           "status": "passed",
-          "executionTimeMs": 11052
+          "executionTimeMs": 11070
         },
         {
           "stepIndex": 5,
           "stepName": "Select shipping method",
           "status": "passed",
-          "executionTimeMs": 3235
+          "executionTimeMs": 3259
         },
         {
           "stepIndex": 6,
           "stepName": "Complete payment and place order",
           "status": "passed",
-          "executionTimeMs": 9106
+          "executionTimeMs": 9119
         },
         {
           "stepIndex": 7,
@@ -64,14 +64,14 @@
           "executionTimeMs": 0
         }
       ],
-      "startedAt": "2026-03-28T23:52:00.468Z",
-      "finishedAt": "2026-03-28T23:52:30.383Z"
+      "startedAt": "2026-03-29T00:03:16.433Z",
+      "finishedAt": "2026-03-29T00:03:46.423Z"
     },
     {
       "journeyId": "J04",
       "journeyName": "Cart Recovery (Expired Session)",
       "status": "passed",
-      "executionTimeMs": 7045,
+      "executionTimeMs": 7036,
       "partialCompletion": 1,
       "stepsTotal": 7,
       "stepsCompleted": 7,
@@ -80,53 +80,53 @@
           "stepIndex": 0,
           "stepName": "Navigate to homepage",
           "status": "passed",
-          "executionTimeMs": 163
+          "executionTimeMs": 135
         },
         {
           "stepIndex": 1,
           "stepName": "Add item to cart",
           "status": "passed",
-          "executionTimeMs": 3265
+          "executionTimeMs": 3285
         },
         {
           "stepIndex": 2,
           "stepName": "Verify item in cart before session expiry",
           "status": "passed",
-          "executionTimeMs": 141
+          "executionTimeMs": 135
         },
         {
           "stepIndex": 3,
           "stepName": "Clear session (simulate cart expiry)",
           "status": "passed",
-          "executionTimeMs": 4
+          "executionTimeMs": 3
         },
         {
           "stepIndex": 4,
           "stepName": "Navigate back to site after expiry",
           "status": "passed",
-          "executionTimeMs": 114
+          "executionTimeMs": 120
         },
         {
           "stepIndex": 5,
           "stepName": "Re-add item to cart (recovery)",
           "status": "passed",
-          "executionTimeMs": 3206
+          "executionTimeMs": 3225
         },
         {
           "stepIndex": 6,
           "stepName": "Verify cart recovered successfully",
           "status": "passed",
-          "executionTimeMs": 152
+          "executionTimeMs": 132
         }
       ],
-      "startedAt": "2026-03-28T23:52:30.605Z",
-      "finishedAt": "2026-03-28T23:52:37.650Z"
+      "startedAt": "2026-03-29T00:03:46.636Z",
+      "finishedAt": "2026-03-29T00:03:53.672Z"
     },
     {
       "journeyId": "J14",
       "journeyName": "Product Comparison",
       "status": "passed",
-      "executionTimeMs": 4232,
+      "executionTimeMs": 4213,
       "partialCompletion": 1,
       "stepsTotal": 8,
       "stepsCompleted": 8,
@@ -135,53 +135,53 @@
           "stepIndex": 0,
           "stepName": "Navigate to product listing",
           "status": "passed",
-          "executionTimeMs": 144
+          "executionTimeMs": 149
         },
         {
           "stepIndex": 1,
           "stepName": "Open first product and record details",
           "status": "passed",
-          "executionTimeMs": 257
+          "executionTimeMs": 221
         },
         {
           "stepIndex": 2,
           "stepName": "Return to product listing",
           "status": "passed",
-          "executionTimeMs": 112
+          "executionTimeMs": 120
         },
         {
           "stepIndex": 3,
           "stepName": "Open second product and record details",
           "status": "passed",
-          "executionTimeMs": 218
+          "executionTimeMs": 223
         },
         {
           "stepIndex": 4,
           "stepName": "Compare products and identify cheaper",
           "status": "passed",
-          "executionTimeMs": 0
+          "executionTimeMs": 1
         },
         {
           "stepIndex": 5,
           "stepName": "Navigate to cheaper product",
           "status": "passed",
-          "executionTimeMs": 322
+          "executionTimeMs": 314
         },
         {
           "stepIndex": 6,
           "stepName": "Add cheaper product to cart",
           "status": "passed",
-          "executionTimeMs": 3039
+          "executionTimeMs": 3049
         },
         {
           "stepIndex": 7,
           "stepName": "Verify cart contains selected product",
           "status": "passed",
-          "executionTimeMs": 140
+          "executionTimeMs": 136
         }
       ],
-      "startedAt": "2026-03-28T23:52:37.874Z",
-      "finishedAt": "2026-03-28T23:52:42.106Z"
+      "startedAt": "2026-03-29T00:03:53.880Z",
+      "finishedAt": "2026-03-29T00:03:58.093Z"
     }
   ]
 }
