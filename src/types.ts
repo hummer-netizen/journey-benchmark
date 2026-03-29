@@ -66,6 +66,8 @@ export interface RunResult {
   startedAt: string;
   finishedAt: string;
   provider: string;
+  site: string;
+  targetUrl: string;
   totalJourneys: number;
   passed: number;
   failed: number;

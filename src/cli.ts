@@ -74,6 +74,7 @@ program
       provider,
       journeys: selectedJourneys,
       baseUrl: config.baseUrl,
+      site: options.site,
     });
 
     let exitCode = 0;

@@ -38,6 +38,8 @@ function buildMarkdown(result: RunResult): string {
 |-------|-------|
 | Date | ${result.startedAt} |
 | Provider | ${result.provider} |
+| Site | ${result.site} |
+| Target URL | ${result.targetUrl} |
 | Journeys | ${result.totalJourneys} |
 | Passed | ${result.passed} |
 | Failed | ${result.failed} |

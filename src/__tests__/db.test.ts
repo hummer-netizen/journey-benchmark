@@ -20,6 +20,8 @@ function makeRunResult(): RunResult {
     startedAt: '2026-01-01T00:00:00Z',
     finishedAt: '2026-01-01T00:01:00Z',
     provider: 'DirectProvider',
+    site: 'webarena',
+    targetUrl: 'http://localhost:7770',
     totalJourneys: 2,
     passed: 1,
     failed: 1,

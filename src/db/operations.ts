@@ -4,8 +4,8 @@ import type { RunResult, JourneyResult, StepResult } from '../types.js';
 /** Insert a completed run and all its nested results. Returns the run ID. */
 export function insertRun(db: Database.Database, result: RunResult): number {
   const runStmt = db.prepare(`
-    INSERT INTO runs (started_at, finished_at, provider, total_journeys, passed, failed)
-    VALUES (@startedAt, @finishedAt, @provider, @totalJourneys, @passed, @failed)
+    INSERT INTO runs (started_at, finished_at, provider, site, target_url, total_journeys, passed, failed)
+    VALUES (@startedAt, @finishedAt, @provider, @site, @targetUrl, @totalJourneys, @passed, @failed)
   `);
 
   const journeyStmt = db.prepare(`
@@ -29,6 +29,8 @@ export function insertRun(db: Database.Database, result: RunResult): number {
       startedAt: result.startedAt,
       finishedAt: result.finishedAt,
       provider: result.provider,
+      site: result.site ?? 'unknown',
+      targetUrl: result.targetUrl ?? '',
       totalJourneys: result.totalJourneys,
       passed: result.passed,
       failed: result.failed,
@@ -81,6 +83,8 @@ export function getRun(db: Database.Database, runId: number): RunResult | null {
     startedAt: run.started_at,
     finishedAt: run.finished_at,
     provider: run.provider,
+    site: run.site ?? 'unknown',
+    targetUrl: run.target_url ?? '',
     totalJourneys: run.total_journeys,
     passed: run.passed,
     failed: run.failed,

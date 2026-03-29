@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS runs (
   started_at TEXT NOT NULL,
   finished_at TEXT NOT NULL,
   provider TEXT NOT NULL,
+  site TEXT,
+  target_url TEXT,
   total_journeys INTEGER,
   passed INTEGER,
   failed INTEGER

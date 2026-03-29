@@ -4,15 +4,17 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-03-29T00:03:16.054Z |
+| Date | 2026-03-29T02:13:40.506Z |
 | Provider | DirectProvider |
+| Site | webarena |
+| Target URL | http://localhost:7770 |
 | Journeys | 3 |
 | Passed | 3 |
 | Failed | 0 |
 | Success Rate (M1) | 100.0% |
 | Avg Partial Completion (M2) | 100.0% |
-| Total Time | 42043ms |
-| Avg Journey Time (M3) | 13746ms |
+| Total Time | 78101ms |
+| Avg Journey Time (M3) | 25720ms |
 
 ## Journey Results
 
@@ -21,7 +23,7 @@
 | Field | Value |
 |-------|-------|
 | Status | passed |
-| Time | 29990ms |
+| Time | 49264ms |
 | Steps | 8/8 |
 | Partial Completion | 100.0% |
 
@@ -30,7 +32,7 @@
 | Field | Value |
 |-------|-------|
 | Status | passed |
-| Time | 7036ms |
+| Time | 17408ms |
 | Steps | 7/7 |
 | Partial Completion | 100.0% |
 
@@ -39,7 +41,7 @@
 | Field | Value |
 |-------|-------|
 | Status | passed |
-| Time | 4213ms |
+| Time | 10488ms |
 | Steps | 8/8 |
 | Partial Completion | 100.0% |
 
