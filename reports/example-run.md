@@ -4,15 +4,15 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-03-28T22:45:08.654Z |
+| Date | 2026-03-29T00:49:07.758Z |
 | Provider | DirectProvider |
 | Journeys | 3 |
 | Passed | 3 |
 | Failed | 0 |
 | Success Rate (M1) | 100.0% |
 | Avg Partial Completion (M2) | 100.0% |
-| Total Time | 38879ms |
-| Avg Journey Time (M3) | 12709ms |
+| Total Time | 37674ms |
+| Avg Journey Time (M3) | 12269ms |
 
 ## Journey Results
 
@@ -21,7 +21,7 @@
 | Field | Value |
 |-------|-------|
 | Status | passed |
-| Time | 26934ms |
+| Time | 25598ms |
 | Steps | 9/9 |
 | Partial Completion | 100.0% |
 
@@ -30,7 +30,7 @@
 | Field | Value |
 |-------|-------|
 | Status | passed |
-| Time | 6985ms |
+| Time | 7046ms |
 | Steps | 7/7 |
 | Partial Completion | 100.0% |
 
@@ -39,7 +39,7 @@
 | Field | Value |
 |-------|-------|
 | Status | passed |
-| Time | 4207ms |
+| Time | 4162ms |
 | Steps | 8/8 |
 | Partial Completion | 100.0% |
 
