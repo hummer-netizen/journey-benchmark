@@ -1,0 +1,40 @@
+# Sprint 4: Extends Sprint 3 with gov-forms (port 3335) and return-portal (port 3336)
+# Usage: docker-compose -f docker-compose.sprint3.yml -f docker-compose.sprint4.yml up -d
+
+services:
+  gov-forms:
+    build:
+      context: ./environments/gov-forms
+      dockerfile: Dockerfile
+    ports:
+      - "3335:3335"
+    environment:
+      - PORT=3335
+    volumes:
+      - govforms-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3335/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  return-portal:
+    build:
+      context: ./environments/return-portal
+      dockerfile: Dockerfile
+    ports:
+      - "3336:3336"
+    environment:
+      - PORT=3336
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3336/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  govforms-data:

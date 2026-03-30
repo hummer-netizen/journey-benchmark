@@ -135,4 +135,16 @@ export const AUTH_APP_CONFIG = {
   baseUrl: AUTH_APP_URL,
 };
 
+const GOV_FORMS_URL = process.env['GOV_FORMS_URL'] ?? 'http://localhost:3335';
+const RETURN_PORTAL_URL = process.env['RETURN_PORTAL_URL'] ?? 'http://localhost:3336';
+
+export const GOV_FORMS_CONFIG = {
+  baseUrl: GOV_FORMS_URL,
+};
+
+export const RETURN_PORTAL_CONFIG = {
+  baseUrl: RETURN_PORTAL_URL,
+};
+
+export { GOV_FORMS_URL, RETURN_PORTAL_URL };
 export { FLIGHT_APP_URL, AUTH_APP_URL };
