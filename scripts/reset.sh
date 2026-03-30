@@ -29,10 +29,9 @@ fi
 echo "Resetting auth app database..."
 AUTH_CONTAINER=$(sudo docker ps -qf "name=journey-auth-app" 2>/dev/null || true)
 if [ -n "$AUTH_CONTAINER" ]; then
-  sudo docker exec "$AUTH_CONTAINER" sh -c "rm -f /data/auth.db && node src/server.js &"
-  sleep 2
-  sudo docker exec "$AUTH_CONTAINER" sh -c "kill \$(pgrep -f 'node src/server.js') 2>/dev/null || true"
+  sudo docker exec "$AUTH_CONTAINER" sh -c "rm -f /data/auth.db"
   sudo docker restart "$AUTH_CONTAINER"
+  sleep 2
 else
   echo "Auth app container not running, skipping reset"
 fi
