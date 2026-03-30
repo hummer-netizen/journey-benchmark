@@ -6,9 +6,12 @@ import { BenchmarkRunner } from './runner/runner.js';
 import { defaultTraceConfig } from './runner/trace.js';
 import { openDatabase, insertRun } from './db/index.js';
 import { generateJsonReport, generateMarkdownReport, generateComparisonReport } from './reporter/index.js';
-import { getSiteConfig } from './journeys/config.js';
+import { getSiteConfig, FLIGHT_APP_CONFIG, AUTH_APP_CONFIG } from './journeys/config.js';
 import { J01ProductPurchase } from './journeys/j01-product-purchase.js';
 import { J04CartRecovery } from './journeys/j04-cart-recovery.js';
+import { J05FlightBooking } from './journeys/j05-flight-booking.js';
+import { J08AccountRegistration } from './journeys/j08-account-registration.js';
+import { J09PasswordReset } from './journeys/j09-password-reset.js';
 import { J14ProductComparison } from './journeys/j14-product-comparison.js';
 import type { Journey } from './types.js';
 
@@ -20,10 +23,10 @@ const program = new Command();
 
 program
   .name('journey-benchmark')
-  .description('Browser automation benchmark for WebArena shopping journeys')
+  .description('Browser automation benchmark for web journeys (shopping, flight booking, auth flows)')
   .version('2.0.0')
   .option('--provider <type>', 'Automation provider: direct | webfuse | webfuse-mcp | browser-use', 'direct')
-  .option('--journeys <list>', 'Comma-separated journey IDs to run (e.g. J01,J04,J14)', 'J01,J04,J14')
+  .option('--journeys <list>', 'Comma-separated journey IDs to run (e.g. J01,J04,J05,J08,J09,J14)', 'J01,J04,J05,J08,J09,J14')
   .option('--site <type>', 'Target site type: webarena | prestashop | magento', 'webarena')
   .option('--shop-url <url>', 'Override target shop URL', '')
   .option('--space-url <url>', 'Webfuse space URL to use for Webfuse provider', '')
@@ -52,6 +55,9 @@ program
     const allJourneys: Record<string, Journey> = {
       J01: new J01ProductPurchase(config),
       J04: new J04CartRecovery(config),
+      J05: new J05FlightBooking(FLIGHT_APP_CONFIG),
+      J08: new J08AccountRegistration(AUTH_APP_CONFIG),
+      J09: new J09PasswordReset(AUTH_APP_CONFIG),
       J14: new J14ProductComparison(config),
     };
 
@@ -60,7 +66,7 @@ program
       .filter((j): j is Journey => j !== undefined);
 
     if (selectedJourneys.length === 0) {
-      console.error('No valid journeys selected. Available: J01, J04, J14');
+      console.error('No valid journeys selected. Available: J01, J04, J05, J08, J09, J14');
       process.exit(1);
     }
 

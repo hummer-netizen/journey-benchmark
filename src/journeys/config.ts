@@ -123,3 +123,16 @@ export function getSiteConfig(): SiteConfig {
   // webarena
   return { ...WEBARENA_CONFIG, baseUrl: shopUrl ?? WEBARENA_CONFIG.baseUrl };
 }
+
+const FLIGHT_APP_URL = process.env['FLIGHT_APP_URL'] ?? 'http://localhost:3333';
+const AUTH_APP_URL = process.env['AUTH_APP_URL'] ?? 'http://localhost:3334';
+
+export const FLIGHT_APP_CONFIG = {
+  baseUrl: FLIGHT_APP_URL,
+};
+
+export const AUTH_APP_CONFIG = {
+  baseUrl: AUTH_APP_URL,
+};
+
+export { FLIGHT_APP_URL, AUTH_APP_URL };

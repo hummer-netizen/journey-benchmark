@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: journey-mailpit
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit-data:/data
+    restart: unless-stopped
+
+  flight-app:
+    build:
+      context: ./environments/flight-app
+      dockerfile: Dockerfile
+    container_name: journey-flight-app
+    ports:
+      - "3333:3333"
+    environment:
+      PORT: "3333"
+      DB_PATH: /data/flights.db
+    volumes:
+      - flight-data:/data
+    restart: unless-stopped
+
+  auth-app:
+    build:
+      context: ./environments/auth-app
+      dockerfile: Dockerfile
+    container_name: journey-auth-app
+    ports:
+      - "3334:3334"
+    environment:
+      PORT: "3334"
+      DB_PATH: /data/auth.db
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      APP_URL: "http://localhost:3334"
+    volumes:
+      - auth-data:/data
+    depends_on:
+      - mailpit
+    restart: unless-stopped
+
+volumes:
+  mailpit-data:
+  flight-data:
+  auth-data:
