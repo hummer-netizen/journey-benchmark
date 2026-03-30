@@ -1,0 +1,360 @@
+{
+  "startedAt": "2026-03-30T18:17:47.772Z",
+  "finishedAt": "2026-03-30T18:19:10.143Z",
+  "provider": "DirectProvider",
+  "site": "webarena",
+  "targetUrl": "http://localhost:7770",
+  "totalJourneys": 6,
+  "passed": 6,
+  "failed": 0,
+  "journeys": [
+    {
+      "journeyId": "J01",
+      "journeyName": "Simple Product Purchase",
+      "status": "passed",
+      "executionTimeMs": 51257,
+      "partialCompletion": 1,
+      "stepsTotal": 8,
+      "stepsCompleted": 8,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to homepage",
+          "status": "passed",
+          "executionTimeMs": 328
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Search and open a product detail page",
+          "status": "passed",
+          "executionTimeMs": 524
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Add product to cart",
+          "status": "passed",
+          "executionTimeMs": 3018
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Proceed to checkout",
+          "status": "passed",
+          "executionTimeMs": 4891
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Fill shipping information (guest checkout)",
+          "status": "passed",
+          "executionTimeMs": 3076
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Select shipping method",
+          "status": "passed",
+          "executionTimeMs": 3557
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Complete payment and place order",
+          "status": "passed",
+          "executionTimeMs": 35863
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Verify order confirmation",
+          "status": "passed",
+          "executionTimeMs": 0
+        }
+      ],
+      "startedAt": "2026-03-30T18:17:48.442Z",
+      "finishedAt": "2026-03-30T18:18:39.699Z"
+    },
+    {
+      "journeyId": "J04",
+      "journeyName": "Cart Recovery (Expired Session)",
+      "status": "passed",
+      "executionTimeMs": 17339,
+      "partialCompletion": 1,
+      "stepsTotal": 7,
+      "stepsCompleted": 7,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to homepage",
+          "status": "passed",
+          "executionTimeMs": 434
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Search and add item to cart",
+          "status": "passed",
+          "executionTimeMs": 3511
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Verify item in cart before session expiry",
+          "status": "passed",
+          "executionTimeMs": 4826
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Clear session (simulate cart expiry)",
+          "status": "passed",
+          "executionTimeMs": 5
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Navigate back to site after expiry",
+          "status": "passed",
+          "executionTimeMs": 266
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Re-add item to cart (recovery)",
+          "status": "passed",
+          "executionTimeMs": 3512
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify cart recovered successfully",
+          "status": "passed",
+          "executionTimeMs": 4785
+        }
+      ],
+      "startedAt": "2026-03-30T18:18:40.023Z",
+      "finishedAt": "2026-03-30T18:18:57.362Z"
+    },
+    {
+      "journeyId": "J05",
+      "journeyName": "Flight Search & Booking",
+      "status": "passed",
+      "executionTimeMs": 293,
+      "partialCompletion": 1,
+      "stepsTotal": 8,
+      "stepsCompleted": 8,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to flight app homepage",
+          "status": "passed",
+          "executionTimeMs": 58
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Select origin airport",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Select destination airport",
+          "status": "passed",
+          "executionTimeMs": 3
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Select departure date and search",
+          "status": "passed",
+          "executionTimeMs": 64
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Select a flight from results",
+          "status": "passed",
+          "executionTimeMs": 17
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Fill passenger details",
+          "status": "passed",
+          "executionTimeMs": 30
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Confirm booking",
+          "status": "passed",
+          "executionTimeMs": 86
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Verify booking confirmation",
+          "status": "passed",
+          "executionTimeMs": 22
+        }
+      ],
+      "startedAt": "2026-03-30T18:18:57.715Z",
+      "finishedAt": "2026-03-30T18:18:58.008Z"
+    },
+    {
+      "journeyId": "J08",
+      "journeyName": "Account Registration + Email Verify",
+      "status": "passed",
+      "executionTimeMs": 390,
+      "partialCompletion": 1,
+      "stepsTotal": 7,
+      "stepsCompleted": 7,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to auth app homepage",
+          "status": "passed",
+          "executionTimeMs": 47
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Navigate to registration page",
+          "status": "passed",
+          "executionTimeMs": 33
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Fill registration form",
+          "status": "passed",
+          "executionTimeMs": 18
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Submit registration",
+          "status": "passed",
+          "executionTimeMs": 149
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Retrieve verification email from MailPit",
+          "status": "passed",
+          "executionTimeMs": 12
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Visit email verification link",
+          "status": "passed",
+          "executionTimeMs": 33
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify account is active (login)",
+          "status": "passed",
+          "executionTimeMs": 98
+        }
+      ],
+      "startedAt": "2026-03-30T18:18:58.333Z",
+      "finishedAt": "2026-03-30T18:18:58.723Z"
+    },
+    {
+      "journeyId": "J09",
+      "journeyName": "Password Reset",
+      "status": "passed",
+      "executionTimeMs": 459,
+      "partialCompletion": 1,
+      "stepsTotal": 7,
+      "stepsCompleted": 7,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Setup test account (register + verify)",
+          "status": "passed",
+          "executionTimeMs": 71
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Navigate to forgot password page",
+          "status": "passed",
+          "executionTimeMs": 53
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Enter email and request reset",
+          "status": "passed",
+          "executionTimeMs": 131
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Retrieve reset email from MailPit",
+          "status": "passed",
+          "executionTimeMs": 7
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Visit password reset link",
+          "status": "passed",
+          "executionTimeMs": 24
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Set new password",
+          "status": "passed",
+          "executionTimeMs": 85
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify login with new password",
+          "status": "passed",
+          "executionTimeMs": 88
+        }
+      ],
+      "startedAt": "2026-03-30T18:18:59.031Z",
+      "finishedAt": "2026-03-30T18:18:59.490Z"
+    },
+    {
+      "journeyId": "J14",
+      "journeyName": "Product Comparison",
+      "status": "passed",
+      "executionTimeMs": 10333,
+      "partialCompletion": 1,
+      "stepsTotal": 8,
+      "stepsCompleted": 8,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Search for products",
+          "status": "passed",
+          "executionTimeMs": 644
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Open first product and record details",
+          "status": "passed",
+          "executionTimeMs": 289
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Return to product listing",
+          "status": "passed",
+          "executionTimeMs": 234
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Open second product and record details",
+          "status": "passed",
+          "executionTimeMs": 438
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Compare products and identify cheaper",
+          "status": "passed",
+          "executionTimeMs": 0
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Navigate to cheaper product",
+          "status": "passed",
+          "executionTimeMs": 492
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Add cheaper product to cart",
+          "status": "passed",
+          "executionTimeMs": 3350
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Verify cart contains selected product",
+          "status": "passed",
+          "executionTimeMs": 4886
+        }
+      ],
+      "startedAt": "2026-03-30T18:18:59.805Z",
+      "finishedAt": "2026-03-30T18:19:10.138Z"
+    }
+  ]
+}
