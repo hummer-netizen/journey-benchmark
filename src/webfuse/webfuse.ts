@@ -165,11 +165,21 @@ export class WebfuseProvider implements AutomationProvider {
       } catch { return ''; }
     }
 
+    // Extract the proxied origin from the current frame URL (the real site hostname).
+    function currentProxiedOrigin(): string {
+      const fUrl = frame.url();
+      if (!fUrl || !fUrl.includes('webfu.se')) return '';
+      try {
+        // Extract the real host from Surfly proxy path: /ST/{key}//{host}/...
+        const m = fUrl.match(/\/ST\/[^/]+\/+(([^/]+\.(?:it|com|net|org|io|co)(?:\.[a-z]{2})?))(\/|$)/);
+        if (m) return m[1]!.toLowerCase();
+      } catch {}
+      return '';
+    }
+
     // Helper: navigate the Surfly proxy to a URL.
-    // Primary method: navigate the proxy frame directly to the Surfly proxy URL for the target
-    // (same-origin frame navigation within webfuse-it-p.webfu.se). This bypasses the address bar
-    // entirely and works reliably once the proxy session is active.
-    // Fallback: Surfly address bar input (works before first navigation when sinput is visible).
+    // For same-origin navigation: navigate the frame directly (Surfly proxy URL construction).
+    // For cross-origin navigation: use the Surfly address bar so the proxy re-opens the new domain.
     async function navigateProxy(target: Page, url: string): Promise<void> {
       const cleanUrl = url.replace(/(https?:\/\/[^/?#]+)\/\//g, '$1/');
 
@@ -183,20 +193,83 @@ export class WebfuseProvider implements AutomationProvider {
         return;
       }
 
-      // Primary: navigate the frame directly to the Surfly proxy URL (same-origin, always works)
-      const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
-      if (surflyProxyUrl) {
-        await frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
+      // Check whether destination is same-origin as the current proxy session
+      let destHost = '';
+      try { destHost = new URL(cleanUrl).hostname.toLowerCase(); } catch {}
+      const proxiedOrigin = currentProxiedOrigin();
+      const isSameOrigin = proxiedOrigin && destHost && destHost === proxiedOrigin;
+
+      if (isSameOrigin) {
+        // Same-origin: navigate the proxy frame directly via Surfly proxy URL (fast, no address bar)
+        const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
+        if (surflyProxyUrl) {
+          await frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
+        }
       } else {
-        // Fallback: Surfly address bar (works in initial state when sinput is visible)
-        const urlInput = await target.waitForSelector(
-          'input.sinput, input[placeholder*="URL"], input[placeholder*="url"], input[type="url"]',
-          { timeout: 5000, state: 'visible' }
-        ).catch(() => null);
-        if (!urlInput) throw new Error('Surfly address bar not found');
-        await urlInput.click({ clickCount: 3 });
-        await urlInput.fill(cleanUrl);
-        await urlInput.press('Enter');
+        // Cross-origin: use Surfly address bar to re-open the new domain through the proxy.
+        // After the proxy session starts, Surfly hides the address bar (sinput). We force it
+        // visible via JS so we can type the new URL.
+        await target.evaluate(() => {
+          const s = document.querySelector('input.sinput') as HTMLInputElement | null;
+          if (!s) return;
+          s.style.setProperty('display', 'block', 'important');
+          s.style.setProperty('visibility', 'visible', 'important');
+          s.style.setProperty('opacity', '1', 'important');
+          // Walk up and un-hide ancestors
+          let p = s.parentElement;
+          while (p && p !== document.body) {
+            const cs = window.getComputedStyle(p);
+            if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') {
+              (p as HTMLElement).style.setProperty('display', 'block', 'important');
+              (p as HTMLElement).style.setProperty('visibility', 'visible', 'important');
+              (p as HTMLElement).style.setProperty('opacity', '1', 'important');
+            }
+            p = p.parentElement;
+          }
+        });
+        // The sinput is covered by the iframe overlay — use JS to set value + dispatch Enter.
+        // We bypass Playwright's pointer-event path entirely.
+        const navigated = await target.evaluate((url: string) => {
+          const s = document.querySelector('input.sinput') as HTMLInputElement | null;
+          if (!s) return false;
+          // Force visible (needed so Surfly's listener processes the submit)
+          s.style.setProperty('display', 'block', 'important');
+          s.style.setProperty('visibility', 'visible', 'important');
+          s.style.setProperty('opacity', '1', 'important');
+          let p = s.parentElement;
+          while (p && p !== document.body) {
+            (p as HTMLElement).style.setProperty('display', 'block', 'important');
+            (p as HTMLElement).style.setProperty('visibility', 'visible', 'important');
+            p = p.parentElement;
+          }
+          // Focus and set value
+          s.focus();
+          s.select();
+          s.value = url;
+          // Dispatch input + change so framework picks up the value
+          s.dispatchEvent(new Event('input', { bubbles: true }));
+          s.dispatchEvent(new Event('change', { bubbles: true }));
+          // Dispatch Enter key events
+          const enterDown = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
+          const enterPress = new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
+          const enterUp = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
+          s.dispatchEvent(enterDown);
+          s.dispatchEvent(enterPress);
+          s.dispatchEvent(enterUp);
+          // Also submit the form if present
+          const form = s.closest('form');
+          if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          return true;
+        }, cleanUrl);
+        if (!navigated) {
+          // sinput not found — fallback to proxy URL navigation
+          const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
+          if (surflyProxyUrl) {
+            await frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
+          } else {
+            throw new Error(`Cannot navigate to ${cleanUrl}: sinput not found and no proxy URL`);
+          }
+        }
       }
 
       // Wait for the proxy frame URL to change from the previous URL (navigation started)

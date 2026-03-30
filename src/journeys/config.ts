@@ -124,27 +124,42 @@ export function getSiteConfig(): SiteConfig {
   return { ...WEBARENA_CONFIG, baseUrl: shopUrl ?? WEBARENA_CONFIG.baseUrl };
 }
 
-const FLIGHT_APP_URL = process.env['FLIGHT_APP_URL'] ?? 'http://localhost:3333';
-const AUTH_APP_URL = process.env['AUTH_APP_URL'] ?? 'http://localhost:3334';
-
-export const FLIGHT_APP_CONFIG = {
-  baseUrl: FLIGHT_APP_URL,
+/**
+ * Public tunnel URLs for Webfuse provider (Surfly proxy can't reach localhost).
+ * Maps: envVar -> [localDefault, publicDefault]
+ */
+const APP_URLS: Record<string, [string, string]> = {
+  FLIGHT_APP_URL:    ['http://localhost:3333', 'https://flight-app.webfuse.it'],
+  AUTH_APP_URL:      ['http://localhost:3334', 'https://auth-app.webfuse.it'],
+  GOV_FORMS_URL:     ['http://localhost:3335', 'https://gov-forms.webfuse.it'],
+  RETURN_PORTAL_URL: ['http://localhost:3336', 'https://return-portal.webfuse.it'],
 };
 
-export const AUTH_APP_CONFIG = {
-  baseUrl: AUTH_APP_URL,
-};
+function resolveAppUrl(envVar: string): string {
+  if (process.env[envVar]) return process.env[envVar]!;
+  const [local, pub] = APP_URLS[envVar]!;
+  const provider = process.env['AUTOMATION_PROVIDER'] ?? 'direct';
+  return (provider === 'webfuse' || provider === 'webfuse-mcp') ? pub : local;
+}
 
-const GOV_FORMS_URL = process.env['GOV_FORMS_URL'] ?? 'http://localhost:3335';
-const RETURN_PORTAL_URL = process.env['RETURN_PORTAL_URL'] ?? 'http://localhost:3336';
+// Exported as `let` so ESM live bindings work after resolveAppUrls() is called.
+export let FLIGHT_APP_URL = resolveAppUrl('FLIGHT_APP_URL');
+export let AUTH_APP_URL = resolveAppUrl('AUTH_APP_URL');
+export let GOV_FORMS_URL = resolveAppUrl('GOV_FORMS_URL');
+export let RETURN_PORTAL_URL = resolveAppUrl('RETURN_PORTAL_URL');
 
-export const GOV_FORMS_CONFIG = {
-  baseUrl: GOV_FORMS_URL,
-};
+/**
+ * Re-resolve all app URLs. Call this from the CLI action handler AFTER setting
+ * process.env['AUTOMATION_PROVIDER'] so that webfuse runs get public tunnel URLs.
+ */
+export function resolveAppUrls(): void {
+  FLIGHT_APP_URL = resolveAppUrl('FLIGHT_APP_URL');
+  AUTH_APP_URL = resolveAppUrl('AUTH_APP_URL');
+  GOV_FORMS_URL = resolveAppUrl('GOV_FORMS_URL');
+  RETURN_PORTAL_URL = resolveAppUrl('RETURN_PORTAL_URL');
+}
 
-export const RETURN_PORTAL_CONFIG = {
-  baseUrl: RETURN_PORTAL_URL,
-};
-
-export { GOV_FORMS_URL, RETURN_PORTAL_URL };
-export { FLIGHT_APP_URL, AUTH_APP_URL };
+export const FLIGHT_APP_CONFIG = { get baseUrl() { return FLIGHT_APP_URL; } };
+export const AUTH_APP_CONFIG = { get baseUrl() { return AUTH_APP_URL; } };
+export const GOV_FORMS_CONFIG = { get baseUrl() { return GOV_FORMS_URL; } };
+export const RETURN_PORTAL_CONFIG = { get baseUrl() { return RETURN_PORTAL_URL; } };

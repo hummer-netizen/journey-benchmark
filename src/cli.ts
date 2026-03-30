@@ -6,7 +6,7 @@ import { BenchmarkRunner } from './runner/runner.js';
 import { defaultTraceConfig } from './runner/trace.js';
 import { openDatabase, insertRun } from './db/index.js';
 import { generateJsonReport, generateMarkdownReport, generateComparisonReport, generateStakeholderReport } from './reporter/index.js';
-import { getSiteConfig, FLIGHT_APP_CONFIG, AUTH_APP_CONFIG, GOV_FORMS_CONFIG, RETURN_PORTAL_CONFIG } from './journeys/config.js';
+import { getSiteConfig, FLIGHT_APP_CONFIG, AUTH_APP_CONFIG, GOV_FORMS_CONFIG, RETURN_PORTAL_CONFIG, resolveAppUrls } from './journeys/config.js';
 import { J01ProductPurchase } from './journeys/j01-product-purchase.js';
 import { J04CartRecovery } from './journeys/j04-cart-recovery.js';
 import { J05FlightBooking } from './journeys/j05-flight-booking.js';
@@ -48,6 +48,9 @@ program
     process.env['SITE_TYPE'] = options.site;
     if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl;
     if (options.spaceUrl) process.env['WEBFUSE_SPACE_URL'] = options.spaceUrl;
+
+    // Re-resolve app URLs after setting AUTOMATION_PROVIDER (webfuse uses public tunnel URLs)
+    resolveAppUrls();
 
     if (options.provider === 'webfuse' || options.provider === 'webfuse-mcp') {
       const webfuseTarget = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
@@ -190,6 +193,7 @@ async function runComparison(
 
   for (const providerName of providerNames) {
     process.env['AUTOMATION_PROVIDER'] = providerName;
+    resolveAppUrls();  // Re-resolve URLs for each provider (webfuse needs public tunnel URLs)
     if (providerName === 'webfuse' || providerName === 'webfuse-mcp') {
       process.env['SHOP_URL'] = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
     } else {
