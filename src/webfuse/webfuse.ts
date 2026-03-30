@@ -111,23 +111,37 @@ export class WebfuseProvider implements AutomationProvider {
    * navigate inside the Surfly proxy (via the address bar) instead, and forward
    * all other calls to the proxy frame.
    */
-  private createFramePage(page: Page, frame: Frame, context: import('playwright').BrowserContext): Page {
-    const targetUrl = this.targetUrl;
+  private createFramePage(page: Page, initialFrame: Frame, context: import('playwright').BrowserContext): Page {
+    const self = this;
 
-    // Normalize Surfly proxy frame URLs back to the real Magento URL.
+    // Mutable session state — updated on cross-origin reopen
+    const state: { page: Page; frame: Frame; ctx: import('playwright').BrowserContext } = {
+      page,
+      frame: initialFrame,
+      ctx: context,
+    };
+
+    // Current "real" target URL (updated when session is reopened for a new host)
+    let currentTargetUrl = this.targetUrl;
+
+    // Normalize Surfly proxy frame URLs back to the real URL for the current target host.
     //
     // Surfly rewrites all URLs in the proxied HTML to its own proxy format:
     //   https://webfuse-it-p.webfu.se/.../ST/{key}//.../{real_path}?{real_query}&SURFLY_TAB_PREFIX=...&SURFLY=T
     // For product pages without a real query string, Surfly uses a different format:
     //   .../ST/{key}//.../{real_path}?SURFLYFRAMEORIGIN=https://target?SURFLY_TAB_PREFIX=...
     //
-    // This function extracts {real_path}?{real_query} and reconstructs the Magento URL.
+    // This function extracts {real_path}?{real_query} and reconstructs the real URL.
     function normalizeFrameUrl(url: string): string {
       if (!url || !url.includes('webfu.se')) return url;
       try {
-        const origin = new URL(targetUrl).origin;
+        // Try to get origin from the frame URL itself (extract proxied host)
+        const hostMatch = url.match(/\/ST\/[^/]+\/+([^/?]+)/);
+        const origin = hostMatch
+          ? `https://${hostMatch[1]}`
+          : new URL(currentTargetUrl).origin;
         // Extract everything after /ST/{key}/{one or more slashes}
-        const m = url.match(/\/ST\/[^/]+\/+(.*)/);
+        const m = url.match(/\/ST\/[^/]+\/+[^/?]+\/(.*)/);
         if (!m) return url;
 
         let rest = m[1]!;
@@ -147,129 +161,100 @@ export class WebfuseProvider implements AutomationProvider {
     // Track URL history for goBack() support
     const urlHistory: string[] = [];
 
-    // Convert a real Magento URL into a Surfly proxy URL for the current session.
-    // Surfly URLs look like: https://webfuse-it-p.webfu.se/.../ST/{key}//{path}?SURFLY_TAB_PREFIX=...
-    // We extract the proxy prefix from the current frame URL and append the real path.
-    function toSurflyProxyUrl(realUrl: string): string {
-      const fUrl = frame.url();
+    // Extract the proxied hostname from the current frame URL.
+    function currentProxiedHost(): string {
+      const fUrl = state.frame.url();
       if (!fUrl || !fUrl.includes('webfu.se')) return '';
       try {
-        // Extract everything up to and including the trailing slashes after the session key
-        const prefixMatch = fUrl.match(/(https:\/\/[^/]+\/.*?\/ST\/[^/]+\/+)/);
-        if (!prefixMatch) return '';
-        const proxyPrefix = prefixMatch[1]!;
-        const r = new URL(realUrl);
-        const realPath = r.pathname.substring(1) + (r.search || '');
-        const sep = realPath.includes('?') ? '&' : '?';
-        return proxyPrefix + realPath + sep + 'SURFLY_TAB_PREFIX=_surfly_tab1000';
-      } catch { return ''; }
-    }
-
-    // Extract the proxied origin from the current frame URL (the real site hostname).
-    function currentProxiedOrigin(): string {
-      const fUrl = frame.url();
-      if (!fUrl || !fUrl.includes('webfu.se')) return '';
-      try {
-        // Extract the real host from Surfly proxy path: /ST/{key}//{host}/...
-        const m = fUrl.match(/\/ST\/[^/]+\/+(([^/]+\.(?:it|com|net|org|io|co)(?:\.[a-z]{2})?))(\/|$)/);
-        if (m) return m[1]!.toLowerCase();
+        const m = fUrl.match(/\/ST\/[^/]+\/+([^/?]+)/);
+        return m ? m[1]!.toLowerCase() : '';
       } catch {}
       return '';
     }
 
+    // Convert a real URL into a Surfly proxy URL for the current session.
+    // Surfly proxy URLs look like:
+    //   https://webfuse-it-p.webfu.se/.../ST/{key}//{host}/{path}?SURFLY_TAB_PREFIX=...
+    function toSurflyProxyUrl(realUrl: string): string {
+      const fUrl = state.frame.url();
+      if (!fUrl || !fUrl.includes('webfu.se')) return '';
+      try {
+        // Extract base + session key: everything up to /ST/{key}
+        const baseMatch = fUrl.match(/(https:\/\/[^/]+\/.*?\/ST\/[^/]+)\//);
+        if (!baseMatch) return '';
+        const base = baseMatch[1]!;
+        const r = new URL(realUrl);
+        // Build: {base}//{host}/{path}?{query}&SURFLY_TAB_PREFIX=...
+        const hostAndPath = r.hostname + r.pathname + (r.search || '');
+        const sep = hostAndPath.includes('?') ? '&' : '?';
+        return base + '//' + hostAndPath + sep + 'SURFLY_TAB_PREFIX=_surfly_tab1000';
+      } catch { return ''; }
+    }
+
+    // Reopen a fresh Surfly session for a different target URL (cross-origin navigation).
+    // Closes the current browser context and opens a new one.
+    async function reopenSession(newTargetUrl: string): Promise<void> {
+      console.log(`  [Webfuse/reopen] Cross-origin navigation → ${newTargetUrl}`);
+      // Close old context
+      try { await state.ctx.close(); } catch {}
+      // Open new session
+      if (!self.browser) throw new Error('Browser not initialized');
+      const newCtx = await self.browser.newContext();
+      const newPage = await newCtx.newPage();
+      console.log(`  [Webfuse] Opening space: ${self.spaceUrl}`);
+      await newPage.goto(self.spaceUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      const sessionUrl = await self.waitForSessionUrl(newPage);
+      const sessionKey = self.extractSessionKey(sessionUrl);
+      console.log(`  [Webfuse] Session: ${sessionKey} — ${sessionUrl}`);
+      const urlInput = await newPage.waitForSelector(
+        'input[placeholder*="URL"], input[placeholder*="url"], input[type="url"], input[type="text"]',
+        { timeout: 10000, state: 'visible' }
+      );
+      await urlInput.click();
+      await urlInput.fill(newTargetUrl);
+      await urlInput.press('Enter');
+      console.log(`  [Webfuse] Navigating proxy to: ${newTargetUrl}`);
+      const newFrame = await self.waitForProxyFrame(newPage);
+      console.log(`  [Webfuse] Proxy frame loaded: ${newFrame.url().substring(0, 100)}`);
+      // Update mutable state
+      state.page = newPage;
+      state.frame = newFrame;
+      state.ctx = newCtx;
+      currentTargetUrl = newTargetUrl;
+      self.activeSessions.push({ page: newPage, frame: newFrame, sessionKey });
+    }
+
     // Helper: navigate the Surfly proxy to a URL.
-    // For same-origin navigation: navigate the frame directly (Surfly proxy URL construction).
-    // For cross-origin navigation: use the Surfly address bar so the proxy re-opens the new domain.
-    async function navigateProxy(target: Page, url: string): Promise<void> {
+    // Detects cross-origin changes and reopens a fresh session for the new host.
+    async function navigateProxy(url: string): Promise<void> {
       const cleanUrl = url.replace(/(https?:\/\/[^/?#]+)\/\//g, '$1/');
+      const prevFrameUrl = state.frame.url();
 
-      // Record current frame URL before navigating (to detect when navigation happens)
-      const prevFrameUrl = frame.url();
-
-      // If we're already on the target URL, no navigation needed — just settle
+      // Already on target — just settle
       const normalizedPrev = normalizeFrameUrl(prevFrameUrl);
       if (normalizedPrev === cleanUrl || normalizedPrev.split('?')[0] === cleanUrl.split('?')[0]) {
-        await target.waitForTimeout(3000);
+        await state.page.waitForTimeout(3000);
         return;
       }
 
-      // Check whether destination is same-origin as the current proxy session
+      // Check for cross-origin relative to the current session's target host.
+      // Compare against currentTargetUrl (reliable) rather than parsing the proxy frame URL.
       let destHost = '';
       try { destHost = new URL(cleanUrl).hostname.toLowerCase(); } catch {}
-      const proxiedOrigin = currentProxiedOrigin();
-      const isSameOrigin = proxiedOrigin && destHost && destHost === proxiedOrigin;
+      let sessionHost = '';
+      try { sessionHost = new URL(currentTargetUrl).hostname.toLowerCase(); } catch {}
+      if (destHost && sessionHost && destHost !== sessionHost) {
+        await reopenSession(cleanUrl);
+        return;
+      }
 
-      if (isSameOrigin) {
-        // Same-origin: navigate the proxy frame directly via Surfly proxy URL (fast, no address bar)
-        const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
-        if (surflyProxyUrl) {
-          await frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
-        }
+      // Same-origin: navigate via Surfly proxy URL
+      const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
+      if (surflyProxyUrl) {
+        console.log(`  [Webfuse/nav] Proxy URL: ${surflyProxyUrl.substring(0, 120)}`);
+        await state.frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
       } else {
-        // Cross-origin: use Surfly address bar to re-open the new domain through the proxy.
-        // After the proxy session starts, Surfly hides the address bar (sinput). We force it
-        // visible via JS so we can type the new URL.
-        await target.evaluate(() => {
-          const s = document.querySelector('input.sinput') as HTMLInputElement | null;
-          if (!s) return;
-          s.style.setProperty('display', 'block', 'important');
-          s.style.setProperty('visibility', 'visible', 'important');
-          s.style.setProperty('opacity', '1', 'important');
-          // Walk up and un-hide ancestors
-          let p = s.parentElement;
-          while (p && p !== document.body) {
-            const cs = window.getComputedStyle(p);
-            if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') {
-              (p as HTMLElement).style.setProperty('display', 'block', 'important');
-              (p as HTMLElement).style.setProperty('visibility', 'visible', 'important');
-              (p as HTMLElement).style.setProperty('opacity', '1', 'important');
-            }
-            p = p.parentElement;
-          }
-        });
-        // The sinput is covered by the iframe overlay — use JS to set value + dispatch Enter.
-        // We bypass Playwright's pointer-event path entirely.
-        const navigated = await target.evaluate((url: string) => {
-          const s = document.querySelector('input.sinput') as HTMLInputElement | null;
-          if (!s) return false;
-          // Force visible (needed so Surfly's listener processes the submit)
-          s.style.setProperty('display', 'block', 'important');
-          s.style.setProperty('visibility', 'visible', 'important');
-          s.style.setProperty('opacity', '1', 'important');
-          let p = s.parentElement;
-          while (p && p !== document.body) {
-            (p as HTMLElement).style.setProperty('display', 'block', 'important');
-            (p as HTMLElement).style.setProperty('visibility', 'visible', 'important');
-            p = p.parentElement;
-          }
-          // Focus and set value
-          s.focus();
-          s.select();
-          s.value = url;
-          // Dispatch input + change so framework picks up the value
-          s.dispatchEvent(new Event('input', { bubbles: true }));
-          s.dispatchEvent(new Event('change', { bubbles: true }));
-          // Dispatch Enter key events
-          const enterDown = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
-          const enterPress = new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
-          const enterUp = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
-          s.dispatchEvent(enterDown);
-          s.dispatchEvent(enterPress);
-          s.dispatchEvent(enterUp);
-          // Also submit the form if present
-          const form = s.closest('form');
-          if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-          return true;
-        }, cleanUrl);
-        if (!navigated) {
-          // sinput not found — fallback to proxy URL navigation
-          const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
-          if (surflyProxyUrl) {
-            await frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
-          } else {
-            throw new Error(`Cannot navigate to ${cleanUrl}: sinput not found and no proxy URL`);
-          }
-        }
+        throw new Error(`Cannot navigate to ${cleanUrl}: unable to construct proxy URL from frame ${state.frame.url()}`);
       }
 
       // Wait for the proxy frame URL to change from the previous URL (navigation started)
@@ -277,72 +262,61 @@ export class WebfuseProvider implements AutomationProvider {
       const deadline = Date.now() + 30000;
       let navigated = false;
       while (Date.now() < deadline) {
-        const fUrl = frame.url();
+        const fUrl = state.frame.url();
         if (fUrl !== prevFrameUrl) {
           console.log(`  [Webfuse/nav] Frame URL changed → ${normalizeFrameUrl(fUrl).substring(0, 80)}`);
           if (fUrl && !fUrl.includes('chrome-error') && !fUrl.includes('about:')) {
             navigated = true;
-            // Give the page a bit more time to finish rendering (Magento/KO needs a few seconds)
-            await target.waitForTimeout(4000);
+            await state.page.waitForTimeout(4000);
             break;
           }
         }
-        await target.waitForTimeout(500);
+        await state.page.waitForTimeout(500);
       }
       if (!navigated) {
         console.log(`  [Webfuse/nav] Frame URL did not change after 30s (prevUrl: ${normalizeFrameUrl(prevFrameUrl).substring(0, 60)})`);
-        // Frame URL didn't change — Surfly may not have processed the Enter key.
-        // Try clicking a Go/Submit button as fallback, then give up and continue
-        const goBtn = await target.$('button[aria-label*="Go"], button[title*="Go"], button[type="submit"]').catch(() => null);
-        if (goBtn) {
-          await goBtn.click().catch(() => {});
-          await target.waitForTimeout(5000);
-        } else {
-          await target.waitForTimeout(3000);
-        }
+        await state.page.waitForTimeout(3000);
       }
     }
 
     // We use a Proxy to intercept specific methods
+    // Note: 'page' here is the original outer page (kept for fallback/default forwarding),
+    // but all frame interactions use state.frame / state.page (mutable, updated on reopen)
     return new Proxy(page, {
-      get(target, prop) {
-        // goto: navigate inside the Surfly proxy instead of the outer page
+      get(_outerPage, prop) {
+        // goto: navigate inside the Surfly proxy; detect cross-origin and reopen session
         if (prop === 'goto') {
-          return async (url: string, options?: Record<string, unknown>) => {
-            // Normalize Surfly proxy URLs (e.g. from link.getAttribute('href')) to real Magento URLs
+          return async (url: string, _options?: Record<string, unknown>) => {
             const realUrl = normalizeFrameUrl(url);
             console.log(`  [Webfuse/frame] goto: ${realUrl}`);
-            // Push current normalized URL to history before navigating
-            const currentUrl = normalizeFrameUrl(frame.url());
+            const currentUrl = normalizeFrameUrl(state.frame.url());
             if (currentUrl && !currentUrl.includes('about:') && !currentUrl.includes('chrome-error')) {
               urlHistory.push(currentUrl);
             }
             try {
-              await navigateProxy(target, realUrl);
+              await navigateProxy(realUrl);
             } catch {
-              await target.waitForTimeout(3000);
+              await state.page.waitForTimeout(3000);
             }
             return null as unknown as import('playwright').Response;
           };
         }
 
-        // goBack: navigate to the previous URL via address bar
+        // goBack: navigate to the previous URL
         if (prop === 'goBack') {
-          return async (options?: Record<string, unknown>) => {
+          return async (_options?: Record<string, unknown>) => {
             console.log(`  [Webfuse/frame] goBack intercepted`);
             try {
-              // Try URL history first (populated by goto calls)
               let backUrl = urlHistory.pop() ?? '';
-              // Fall back to document.referrer if no history
               if (!backUrl) {
-                backUrl = await frame.evaluate(() => document.referrer).catch(() => '');
+                backUrl = await state.frame.evaluate(() => document.referrer).catch(() => '');
               }
               if (backUrl) {
                 console.log(`  [Webfuse/frame] goBack → ${backUrl.substring(0, 80)}`);
-                await navigateProxy(target, backUrl);
+                await navigateProxy(backUrl);
               } else {
                 console.log(`  [Webfuse/frame] goBack — no URL to go back to, waiting`);
-                await target.waitForTimeout(3000);
+                await state.page.waitForTimeout(3000);
               }
             } catch (e) {
               console.log(`  [Webfuse/frame] goBack failed: ${e}`);
@@ -351,90 +325,88 @@ export class WebfuseProvider implements AutomationProvider {
           };
         }
 
-        // Forward $ and $$ to the proxy frame
+        // Forward $ and $$ to the proxy frame (use state.frame for live binding)
         if (prop === '$') {
-          return (selector: string) => frame.$(selector);
+          return (selector: string) => state.frame.$(selector);
         }
         if (prop === '$$') {
-          return (selector: string) => frame.$$(selector);
+          return (selector: string) => state.frame.$$(selector);
         }
         if (prop === '$eval') {
           return (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
-            frame.$eval(selector as string, fn as (...args: unknown[]) => unknown, ...args);
+            state.frame.$eval(selector as string, fn as (...args: unknown[]) => unknown, ...args);
         }
         if (prop === '$$eval') {
           return (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
-            frame.$$eval(selector as string, fn as (...args: unknown[]) => unknown, ...args);
+            state.frame.$$eval(selector as string, fn as (...args: unknown[]) => unknown, ...args);
         }
         if (prop === 'waitForFunction') {
           return (fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
-            (frame as unknown as Record<string, (...a: unknown[]) => unknown>)['waitForFunction'](fn, ...args);
+            (state.frame as unknown as Record<string, (...a: unknown[]) => unknown>)['waitForFunction'](fn, ...args);
         }
         if (prop === 'waitForSelector') {
           return (selector: string, options?: Record<string, unknown>) => {
-            // Double timeouts when going through Surfly proxy (extra latency)
             const opts = options ? { ...options } : {};
             if (typeof opts['timeout'] === 'number') {
               opts['timeout'] = Math.max((opts['timeout'] as number) * 2, 40000);
             } else {
               opts['timeout'] = 40000;
             }
-            return frame.waitForSelector(selector as string, opts as Parameters<Frame['waitForSelector']>[1]);
+            return state.frame.waitForSelector(selector as string, opts as Parameters<Frame['waitForSelector']>[1]);
           };
         }
         if (prop === 'waitForURL') {
-          // Best-effort: watch frame URL
           return async (pattern: string | RegExp, options?: Record<string, unknown>) => {
             const deadline = Date.now() + ((options?.timeout as number) ?? 30000);
             while (Date.now() < deadline) {
-              const u = frame.url();
+              const u = state.frame.url();
               if (typeof pattern === 'string' && u.includes(pattern.replace(/\*/g, ''))) return;
               if (pattern instanceof RegExp && pattern.test(u)) return;
-              await target.waitForTimeout(500);
+              await state.page.waitForTimeout(500);
             }
           };
         }
         if (prop === 'fill') {
-          return (selector: string, value: string, options?: Record<string, unknown>) => frame.fill(selector, value, options as Parameters<Frame['fill']>[2]);
+          return (selector: string, value: string, options?: Record<string, unknown>) => state.frame.fill(selector, value, options as Parameters<Frame['fill']>[2]);
         }
         if (prop === 'click') {
-          return (selector: string, options?: Record<string, unknown>) => frame.click(selector, options as Parameters<Frame['click']>[1]);
+          return (selector: string, options?: Record<string, unknown>) => state.frame.click(selector, options as Parameters<Frame['click']>[1]);
         }
         if (prop === 'type') {
-          return (selector: string, text: string, options?: Record<string, unknown>) => frame.type(selector, text, options as Parameters<Frame['type']>[2]);
+          return (selector: string, text: string, options?: Record<string, unknown>) => state.frame.type(selector, text, options as Parameters<Frame['type']>[2]);
         }
         if (prop === 'selectOption') {
           return (selector: string, values: unknown, options?: Record<string, unknown>) =>
-            frame.selectOption(selector, values as string, options as Parameters<Frame['selectOption']>[2]);
+            state.frame.selectOption(selector, values as string, options as Parameters<Frame['selectOption']>[2]);
         }
         if (prop === 'evaluate') {
-          return (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => frame.evaluate(fn, ...args);
+          return (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => state.frame.evaluate(fn, ...args);
         }
         if (prop === 'title') {
-          return () => frame.title();
+          return () => state.frame.title();
         }
         if (prop === 'url') {
-          return () => normalizeFrameUrl(frame.url());
+          return () => normalizeFrameUrl(state.frame.url());
         }
         if (prop === 'content') {
-          return () => frame.content();
+          return () => state.frame.content();
         }
         if (prop === 'waitForLoadState') {
-          return (state?: string, options?: Record<string, unknown>) =>
-            frame.waitForLoadState(state as Parameters<Frame['waitForLoadState']>[0], options as Parameters<Frame['waitForLoadState']>[1]);
+          return (loadState?: string, options?: Record<string, unknown>) =>
+            state.frame.waitForLoadState(loadState as Parameters<Frame['waitForLoadState']>[0], options as Parameters<Frame['waitForLoadState']>[1]);
         }
         if (prop === 'waitForTimeout') {
-          return (ms: number) => target.waitForTimeout(ms);
+          return (ms: number) => state.page.waitForTimeout(ms);
         }
         if (prop === 'context') {
-          return () => context;
+          return () => state.ctx;
         }
         if (prop === 'screenshot') {
-          return (options?: Record<string, unknown>) => target.screenshot(options as Parameters<Page['screenshot']>[0]);
+          return (options?: Record<string, unknown>) => state.page.screenshot(options as Parameters<Page['screenshot']>[0]);
         }
         // Default: forward to the outer page
-        const val = (target as unknown as Record<string | symbol, unknown>)[prop as string | symbol];
-        if (typeof val === 'function') return val.bind(target);
+        const val = (page as unknown as Record<string | symbol, unknown>)[prop as string | symbol];
+        if (typeof val === 'function') return val.bind(page);
         return val;
       },
     });
