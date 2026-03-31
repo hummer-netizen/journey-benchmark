@@ -1,6 +1,7 @@
 import * as http from 'node:http';
 import type { Page } from 'playwright';
 import type { GoalExecutionResult } from '../types.js';
+import type { AutomationApi } from '../webfuse/automation-api.js';
 
 // ---------------------------------------------------------------------------
 // OpenAI-compatible types (subset)
@@ -198,6 +199,10 @@ const TOOLS = [
 export interface WebfuseAgentOptions {
   maxIterations?: number;
   model?: string;
+  /** Automation API instance — if provided, extractAXTree uses accessibilityTree instead of page.evaluate */
+  automationApi?: AutomationApi;
+  /** Session ID — required when automationApi is provided */
+  sessionId?: string;
 }
 
 /**
@@ -213,12 +218,16 @@ export class WebfuseAgent {
   private readonly proxyPort: number;
   private readonly maxIterations: number;
   private readonly model: string;
+  private readonly automationApi: AutomationApi | undefined;
+  private readonly sessionId: string | undefined;
 
   constructor(page: Page, proxyPort: number, options: WebfuseAgentOptions = {}) {
     this.page = page;
     this.proxyPort = proxyPort;
     this.maxIterations = options.maxIterations ?? 15;
     this.model = options.model ?? 'gpt-4o';
+    this.automationApi = options.automationApi;
+    this.sessionId = options.sessionId;
   }
 
   /** Execute a natural-language goal on the current page state */
@@ -351,10 +360,19 @@ export class WebfuseAgent {
   // ---------------------------------------------------------------------------
 
   private async extractAXTree(): Promise<string> {
+    // Use Automation API accessibility tree when available (WebfuseProvider path)
+    if (this.automationApi && this.sessionId) {
+      try {
+        return await this.automationApi.accessibilityTree(this.sessionId);
+      } catch {
+        // fall through to page.evaluate fallback
+      }
+    }
+
     try {
       // Build a simplified page context by querying the DOM directly.
       // page.accessibility was removed in Playwright ≥1.44; this approach
-      // works across all versions and Surfly proxy frames.
+      // works across all versions.
       const info = await this.page.evaluate(() => {
         interface ElementInfo {
           role: string;
@@ -509,8 +527,13 @@ export class WebfuseAgent {
         case 'scroll': {
           const direction = args['direction'] as string;
           const amount = (args['amount'] as number | undefined) ?? 400;
-          const delta = direction === 'down' ? amount : -amount;
-          await this.page.evaluate((dy: number) => window.scrollBy(0, dy), delta);
+          if (this.automationApi && this.sessionId) {
+            const delta = direction === 'down' ? amount : -amount;
+            await this.automationApi.scroll(this.sessionId, 'body', delta);
+          } else {
+            const delta = direction === 'down' ? amount : -amount;
+            await this.page.evaluate((dy: number) => window.scrollBy(0, dy), delta);
+          }
           await this.page.waitForTimeout(300);
           return `Scrolled ${direction} by ${amount}px`;
         }

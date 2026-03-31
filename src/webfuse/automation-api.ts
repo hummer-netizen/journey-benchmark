@@ -1,0 +1,230 @@
+import * as https from 'node:https';
+import * as http from 'node:http';
+
+/**
+ * TypeScript client for the Webfuse Session MCP Server.
+ *
+ * Sends JSON-RPC tool calls to the MCP endpoint authenticated with an ak_* key.
+ * All page interaction (perception + actuation) goes through this client.
+ *
+ * Env vars:
+ *   WEBFUSE_API_KEY      — ak_* Bearer token
+ *   WEBFUSE_MCP_ENDPOINT — MCP server URL (default: https://session-mcp.webfu.se/mcp)
+ */
+
+export interface AutomationApiOptions {
+  apiKey: string;
+  mcpEndpoint?: string;
+  timeout?: number;
+}
+
+interface McpResponse {
+  jsonrpc: string;
+  id: number;
+  result?: {
+    content: Array<{
+      type: string;
+      text?: string;
+      data?: string;
+      mimeType?: string;
+    }>;
+  };
+  error?: { code: number; message: string };
+}
+
+export interface AuditEntry {
+  tool: string;
+  args: Record<string, unknown>;
+  result: string;
+  timestamp: number;
+}
+
+export class AutomationApi {
+  private readonly apiKey: string;
+  readonly mcpEndpoint: string;
+  private readonly timeout: number;
+  private callCounter = 0;
+  private readonly _auditLog: AuditEntry[] = [];
+
+  constructor(options: AutomationApiOptions) {
+    this.apiKey = options.apiKey;
+    this.mcpEndpoint = options.mcpEndpoint ?? 'https://session-mcp.webfu.se/mcp';
+    this.timeout = options.timeout ?? 15000;
+  }
+
+  /** Low-level HTTP POST — overrideable in tests via subclass */
+  protected post(url: string, body: string, headers: Record<string, string>): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const lib = (parsed.protocol === 'https:' ? https : http) as unknown as typeof https;
+      const reqOptions: https.RequestOptions = {
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          ...headers,
+        },
+      };
+      const req = lib.request(reqOptions, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        res.on('end', () => resolve(data));
+      });
+      req.on('error', reject);
+      req.setTimeout(this.timeout, () => {
+        req.destroy();
+        reject(new Error(`MCP request timed out after ${this.timeout}ms`));
+      });
+      req.write(body);
+      req.end();
+    });
+  }
+
+  async callTool(name: string, args: Record<string, unknown>): Promise<string> {
+    const id = ++this.callCounter;
+    const body = JSON.stringify({
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    });
+
+    const raw = await this.post(this.mcpEndpoint, body, {
+      Authorization: `Bearer ${this.apiKey}`,
+    });
+
+    let parsed: McpResponse;
+    try {
+      parsed = JSON.parse(raw) as McpResponse;
+    } catch {
+      throw new Error(`Failed to parse MCP response for [${name}]: ${raw.slice(0, 200)}`);
+    }
+
+    if (parsed.error) {
+      throw new Error(`MCP tool error [${name}]: ${parsed.error.message}`);
+    }
+
+    const content = parsed.result?.content ?? [];
+    const text = content
+      .filter(c => c.type === 'text')
+      .map(c => c.text ?? '')
+      .join('\n');
+
+    this._auditLog.push({ tool: name, args, result: text.slice(0, 500), timestamp: Date.now() });
+    return text;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
+
+  async navigate(sessionId: string, url: string): Promise<string> {
+    return this.callTool('navigate', { session_id: sessionId, url });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Actuation
+  // ---------------------------------------------------------------------------
+
+  async click(sessionId: string, target: string, options?: Record<string, unknown>): Promise<string> {
+    return this.callTool('act_click', { session_id: sessionId, target, ...options });
+  }
+
+  async type(sessionId: string, target: string, text: string, options?: { overwrite?: boolean }): Promise<string> {
+    return this.callTool('act_type', { session_id: sessionId, target, text, ...options });
+  }
+
+  async keyPress(sessionId: string, target: string, key: string, options?: Record<string, unknown>): Promise<string> {
+    return this.callTool('act_keyPress', { session_id: sessionId, target, key, ...options });
+  }
+
+  async scroll(sessionId: string, target: string, amount: number, options?: Record<string, unknown>): Promise<string> {
+    return this.callTool('act_scroll', { session_id: sessionId, target, amount, ...options });
+  }
+
+  async mouseMove(sessionId: string, target: string, options?: Record<string, unknown>): Promise<string> {
+    return this.callTool('act_mouseMove', { session_id: sessionId, target, ...options });
+  }
+
+  async select(sessionId: string, target: string, value: string, options?: Record<string, unknown>): Promise<string> {
+    return this.callTool('act_select', { session_id: sessionId, target, value, ...options });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Perception
+  // ---------------------------------------------------------------------------
+
+  async domSnapshot(sessionId: string, options?: { webfuseIDs?: boolean }): Promise<string> {
+    return this.callTool('see_domSnapshot', { session_id: sessionId, ...options });
+  }
+
+  async guiSnapshot(sessionId: string): Promise<Buffer> {
+    const id = ++this.callCounter;
+    const body = JSON.stringify({
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: { name: 'see_guiSnapshot', arguments: { session_id: sessionId } },
+    });
+    const raw = await this.post(this.mcpEndpoint, body, {
+      Authorization: `Bearer ${this.apiKey}`,
+    });
+    let parsed: McpResponse;
+    try { parsed = JSON.parse(raw) as McpResponse; } catch {
+      throw new Error(`Failed to parse guiSnapshot response: ${raw.slice(0, 200)}`);
+    }
+    if (parsed.error) throw new Error(`MCP tool error [see_guiSnapshot]: ${parsed.error.message}`);
+    const content = parsed.result?.content ?? [];
+    for (const c of content) {
+      if (c.type === 'image' && c.data) {
+        this._auditLog.push({ tool: 'see_guiSnapshot', args: { session_id: sessionId }, result: '[image]', timestamp: Date.now() });
+        return Buffer.from(c.data, 'base64');
+      }
+    }
+    // Fallback: text might be a base64 string or URL
+    const text = content.find(c => c.type === 'text')?.text ?? '';
+    this._auditLog.push({ tool: 'see_guiSnapshot', args: { session_id: sessionId }, result: text.slice(0, 50), timestamp: Date.now() });
+    return text ? Buffer.from(text, 'base64') : Buffer.alloc(0);
+  }
+
+  async accessibilityTree(sessionId: string, options?: Record<string, unknown>): Promise<string> {
+    return this.callTool('see_accessibilityTree', { session_id: sessionId, ...options });
+  }
+
+  async textSelection(sessionId: string): Promise<string> {
+    return this.callTool('see_textSelection', { session_id: sessionId });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Info / Wait
+  // ---------------------------------------------------------------------------
+
+  async pageInfo(sessionId: string): Promise<{ url: string; title: string }> {
+    const text = await this.callTool('page_info', { session_id: sessionId });
+    try {
+      return JSON.parse(text) as { url: string; title: string };
+    } catch {
+      const urlMatch = text.match(/url[:\s]+([^\s\n]+)/i);
+      const titleMatch = text.match(/title[:\s]+(.+?)(\n|$)/i);
+      return {
+        url: urlMatch?.[1]?.trim() ?? '',
+        title: titleMatch?.[1]?.trim() ?? '',
+      };
+    }
+  }
+
+  async wait(sessionId: string): Promise<string> {
+    return this.callTool('wait', { session_id: sessionId });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Audit log
+  // ---------------------------------------------------------------------------
+
+  get auditLog(): AuditEntry[] {
+    return [...this._auditLog];
+  }
+}

@@ -57,7 +57,10 @@ export class WebfuseMcpProvider implements AutomationProvider, GoalAwareProvider
    * GoalAwareProvider-compatible.
    */
   async executeGoal(page: Page, goal: string): Promise<void> {
-    const agent = new WebfuseAgent(page, this.proxyPort);
+    const agent = new WebfuseAgent(page, this.proxyPort, {
+      automationApi: this.webfuse.getAutomationApi() ?? undefined,
+      sessionId: this.webfuse.getActiveSessionId() ?? undefined,
+    });
     await agent.executeGoal(goal);
   }
 

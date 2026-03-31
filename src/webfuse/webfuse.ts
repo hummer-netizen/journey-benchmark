@@ -1,494 +1,428 @@
-import { chromium, type Browser, type Page, type Frame } from 'playwright';
+import * as https from 'node:https';
+import type { Page } from 'playwright';
 import type { AutomationProvider } from './provider.js';
+import { AutomationApi } from './automation-api.js';
 
 /**
- * Webfuse Automation API provider.
+ * WebfuseProvider — drives browser automation via the Webfuse Session MCP Server.
  *
- * Flow (per implementation roadmap D3):
- * 1. Launch Chromium and navigate to the Webfuse space URL
- * 2. Webfuse redirects to a session URL (e.g. https://webfu.se/sXXX)
- * 3. Type the target URL into Surfly's address bar to begin proxied navigation
- * 4. Automation runs through the Surfly proxy frame (_surfly_tab1000)
- * 5. The session_key is available for MCP control
+ * All perception (domSnapshot, accessibilityTree) and actuation (click, type, etc.)
+ * go through the Automation API. No Chromium is launched.
  *
  * Env vars:
- *   WEBFUSE_API_KEY   — REST API token (ck_...) for webfu.se
- *   WEBFUSE_SPACE_URL — Webfuse space URL to open (e.g. https://webfu.se/+benchmark-webarena/)
- *   WEBFUSE_TARGET_URL — Target site URL to open inside the space
+ *   WEBFUSE_API_KEY      — ak_* key for the MCP server (required)
+ *   WEBFUSE_MCP_ENDPOINT — MCP server URL (default: https://session-mcp.webfu.se/mcp)
+ *   WEBFUSE_SESSION_ID   — existing session ID (skip creation)
+ *   WEBFUSE_SPACE_URL    — space URL for REST API session creation fallback
  */
 export class WebfuseProvider implements AutomationProvider {
-  private apiKey: string;
-  private spaceUrl: string;
-  private targetUrl: string;
-  private browser: Browser | null = null;
-  private activeSessions: Array<{ page: Page; frame: Frame; sessionKey: string }> = [];
-  private headless: boolean;
+  private readonly apiKey: string;
+  private readonly mcpEndpoint: string;
+  private readonly spaceUrl: string;
+  private _automationApi: AutomationApi | null = null;
+  private _activeSessionId: string | null = null;
 
-  constructor(headless = true) {
+  constructor(_headless = true) {
     const apiKey = process.env['WEBFUSE_API_KEY'];
-    if (!apiKey) {
-      throw new Error('WEBFUSE_API_KEY is not set — cannot use Webfuse provider');
-    }
+    if (!apiKey) throw new Error('WEBFUSE_API_KEY is not set — cannot use WebfuseProvider');
     this.apiKey = apiKey;
+    this.mcpEndpoint = process.env['WEBFUSE_MCP_ENDPOINT'] ?? 'https://session-mcp.webfu.se/mcp';
     this.spaceUrl = process.env['WEBFUSE_SPACE_URL'] ?? 'https://webfu.se/+benchmark-webarena/';
-    this.targetUrl = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
-    this.headless = headless;
   }
 
-  /**
-   * Open the Webfuse space, navigate to the target URL via Surfly's address bar,
-   * and return a Page-like proxy that forwards calls to the Surfly proxy frame.
-   *
-   * The Surfly proxy wraps the target URL — automation runs through the Webfuse layer.
-   */
-  async openUrl(requestedUrl: string): Promise<Page> {
-    if (!this.browser) {
-      this.browser = await chromium.launch({ headless: this.headless });
+  private getApi(): AutomationApi {
+    if (!this._automationApi) {
+      this._automationApi = new AutomationApi({
+        apiKey: this.apiKey,
+        mcpEndpoint: this.mcpEndpoint,
+      });
     }
-
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
-
-    // Navigate to the Webfuse space — Surfly creates a session and shows a blank tab
-    const targetUrl = requestedUrl || this.targetUrl;
-    console.log(`  [Webfuse] Opening space: ${this.spaceUrl}`);
-    await page.goto(this.spaceUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-
-    // Wait for session URL redirect (pattern: /sXXX)
-    const sessionUrl = await this.waitForSessionUrl(page);
-    const sessionKey = this.extractSessionKey(sessionUrl);
-    console.log(`  [Webfuse] Session: ${sessionKey} — ${sessionUrl}`);
-
-    // Type the target URL into Surfly's address bar
-    const urlInput = await page.waitForSelector(
-      'input[placeholder*="URL"], input[placeholder*="url"], input[type="url"], input[type="text"]',
-      { timeout: 10000, state: 'visible' }
-    );
-    await urlInput.click();
-    await urlInput.fill(targetUrl);
-    await urlInput.press('Enter');
-    console.log(`  [Webfuse] Navigating proxy to: ${targetUrl}`);
-
-    // Wait for the Surfly proxy frame to load the target
-    const proxyFrame = await this.waitForProxyFrame(page);
-    console.log(`  [Webfuse] Proxy frame loaded: ${proxyFrame.url().substring(0, 100)}`);
-
-    // Return a FramePage wrapper so journey code drives the proxy frame
-    const framePage = this.createFramePage(page, proxyFrame, context);
-    this.activeSessions.push({ page, frame: proxyFrame, sessionKey });
-    return framePage;
+    return this._automationApi;
   }
 
-  /**
-   * Wait for the Surfly proxy frame (_surfly_tab1000) to load a non-error page.
-   */
-  private async waitForProxyFrame(page: Page): Promise<Frame> {
-    const deadline = Date.now() + 30000;
-    while (Date.now() < deadline) {
-      const frames = page.frames();
-      for (const f of frames) {
-        const url = f.url();
-        if (f.name().startsWith('_surfly_tab1000') && url && !url.includes('chrome-error') && !url.includes('about:')) {
-          // Wait a moment for the frame to stabilise
-          await page.waitForTimeout(3000);
-          return f;
-        }
-      }
-      await page.waitForTimeout(500);
+  private async resolveSessionId(): Promise<string> {
+    const envSessionId = process.env['WEBFUSE_SESSION_ID'];
+    if (envSessionId) {
+      console.log(`  [Webfuse] Using session: ${envSessionId}`);
+      return envSessionId;
     }
-    // Fallback: return the best available frame
-    const frames = page.frames();
-    const surfly = frames.find(f => f.name().startsWith('_surfly_tab1000'));
-    if (surfly) return surfly;
-    throw new Error('Webfuse proxy frame (_surfly_tab1000) did not load within 30s');
+    const sessionId = await this.createSession();
+    console.log(`  [Webfuse] Created session: ${sessionId}`);
+    return sessionId;
   }
 
-  /**
-   * Create a Page-compatible wrapper that forwards navigation and interaction
-   * to the Surfly proxy frame while keeping page-level APIs (goto, screenshot, etc.).
-   *
-   * Journey steps call page.goto(url) and page.$(selector). We intercept goto to
-   * navigate inside the Surfly proxy (via the address bar) instead, and forward
-   * all other calls to the proxy frame.
-   */
-  private createFramePage(page: Page, initialFrame: Frame, context: import('playwright').BrowserContext): Page {
-    const self = this;
-
-    // Mutable session state — updated on cross-origin reopen
-    const state: { page: Page; frame: Frame; ctx: import('playwright').BrowserContext } = {
-      page,
-      frame: initialFrame,
-      ctx: context,
-    };
-
-    // Current "real" target URL (updated when session is reopened for a new host)
-    let currentTargetUrl = this.targetUrl;
-
-    // Normalize Surfly proxy frame URLs back to the real URL for the current target host.
-    //
-    // Surfly rewrites all URLs in the proxied HTML to its own proxy format:
-    //   https://webfuse-it-p.webfu.se/.../ST/{key}//.../{real_path}?{real_query}&SURFLY_TAB_PREFIX=...&SURFLY=T
-    // For product pages without a real query string, Surfly uses a different format:
-    //   .../ST/{key}//.../{real_path}?SURFLYFRAMEORIGIN=https://target?SURFLY_TAB_PREFIX=...
-    //
-    // This function extracts {real_path}?{real_query} and reconstructs the real URL.
-    function normalizeFrameUrl(url: string): string {
-      if (!url || !url.includes('webfu.se')) return url;
-      try {
-        // Try to get origin from the frame URL itself (extract proxied host)
-        const hostMatch = url.match(/\/ST\/[^/]+\/+([^/?]+)/);
-        const origin = hostMatch
-          ? `https://${hostMatch[1]}`
-          : new URL(currentTargetUrl).origin;
-        // Extract everything after /ST/{key}/{one or more slashes}
-        const m = url.match(/\/ST\/[^/]+\/+[^/?]+\/(.*)/);
-        if (!m) return url;
-
-        let rest = m[1]!;
-        // Strip ?SURFLYFRAMEORIGIN=... and everything after (Surfly appends this to product URLs)
-        rest = rest.replace(/[?&]SURFLYFRAMEORIGIN[^]*$/, '');
-        // Strip remaining Surfly-specific params
-        rest = rest.replace(/[?&]SURFLY_TAB_PREFIX=[^&]*/g, '');
-        rest = rest.replace(/[?&]SURFLY(?:=[^&]*)?(?=$|[&?])/g, '');
-        // Clean trailing separators
-        rest = rest.replace(/[?&]+$/, '');
-
-        return origin + '/' + rest;
-      } catch {}
-      return url;
-    }
-
-    // Track URL history for goBack() support
-    const urlHistory: string[] = [];
-
-    // Extract the proxied hostname from the current frame URL.
-    function currentProxiedHost(): string {
-      const fUrl = state.frame.url();
-      if (!fUrl || !fUrl.includes('webfu.se')) return '';
-      try {
-        const m = fUrl.match(/\/ST\/[^/]+\/+([^/?]+)/);
-        return m ? m[1]!.toLowerCase() : '';
-      } catch {}
-      return '';
-    }
-
-    // Convert a real URL into a Surfly proxy URL for the current session.
-    // Surfly proxy URLs look like:
-    //   https://webfuse-it-p.webfu.se/.../ST/{key}//{host}/{path}?SURFLY_TAB_PREFIX=...
-    function toSurflyProxyUrl(realUrl: string): string {
-      const fUrl = state.frame.url();
-      if (!fUrl || !fUrl.includes('webfu.se')) return '';
-      try {
-        // Extract base + session key: everything up to /ST/{key}
-        const baseMatch = fUrl.match(/(https:\/\/[^/]+\/.*?\/ST\/[^/]+)\//);
-        if (!baseMatch) return '';
-        const base = baseMatch[1]!;
-        const r = new URL(realUrl);
-        // Build: {base}//{host}/{path}?{query}&SURFLY_TAB_PREFIX=...
-        const hostAndPath = r.hostname + r.pathname + (r.search || '');
-        const sep = hostAndPath.includes('?') ? '&' : '?';
-        return base + '//' + hostAndPath + sep + 'SURFLY_TAB_PREFIX=_surfly_tab1000';
-      } catch { return ''; }
-    }
-
-    // Reopen a fresh Surfly session for a different target URL (cross-origin navigation).
-    // Closes the current browser context and opens a new one.
-    async function reopenSession(newTargetUrl: string): Promise<void> {
-      console.log(`  [Webfuse/reopen] Cross-origin navigation → ${newTargetUrl}`);
-      // Close old context
-      try { await state.ctx.close(); } catch {}
-      // Open new session
-      if (!self.browser) throw new Error('Browser not initialized');
-      const newCtx = await self.browser.newContext();
-      const newPage = await newCtx.newPage();
-      console.log(`  [Webfuse] Opening space: ${self.spaceUrl}`);
-      await newPage.goto(self.spaceUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      const sessionUrl = await self.waitForSessionUrl(newPage);
-      const sessionKey = self.extractSessionKey(sessionUrl);
-      console.log(`  [Webfuse] Session: ${sessionKey} — ${sessionUrl}`);
-      const urlInput = await newPage.waitForSelector(
-        'input[placeholder*="URL"], input[placeholder*="url"], input[type="url"], input[type="text"]',
-        { timeout: 10000, state: 'visible' }
-      );
-      await urlInput.click();
-      await urlInput.fill(newTargetUrl);
-      await urlInput.press('Enter');
-      console.log(`  [Webfuse] Navigating proxy to: ${newTargetUrl}`);
-      const newFrame = await self.waitForProxyFrame(newPage);
-      console.log(`  [Webfuse] Proxy frame loaded: ${newFrame.url().substring(0, 100)}`);
-      // Update mutable state
-      state.page = newPage;
-      state.frame = newFrame;
-      state.ctx = newCtx;
-      currentTargetUrl = newTargetUrl;
-      self.activeSessions.push({ page: newPage, frame: newFrame, sessionKey });
-    }
-
-    // Helper: navigate the Surfly proxy to a URL.
-    // Detects cross-origin changes and reopens a fresh session for the new host.
-    async function navigateProxy(url: string): Promise<void> {
-      const cleanUrl = url.replace(/(https?:\/\/[^/?#]+)\/\//g, '$1/');
-      const prevFrameUrl = state.frame.url();
-
-      // Already on target — just settle
-      const normalizedPrev = normalizeFrameUrl(prevFrameUrl);
-      if (normalizedPrev === cleanUrl || normalizedPrev.split('?')[0] === cleanUrl.split('?')[0]) {
-        await state.page.waitForTimeout(3000);
-        return;
-      }
-
-      // Check for cross-origin relative to the current session's target host.
-      // Compare against currentTargetUrl (reliable) rather than parsing the proxy frame URL.
-      let destHost = '';
-      try { destHost = new URL(cleanUrl).hostname.toLowerCase(); } catch {}
-      let sessionHost = '';
-      try { sessionHost = new URL(currentTargetUrl).hostname.toLowerCase(); } catch {}
-      if (destHost && sessionHost && destHost !== sessionHost) {
-        await reopenSession(cleanUrl);
-        return;
-      }
-
-      // Same-origin: navigate via Surfly proxy URL
-      const surflyProxyUrl = toSurflyProxyUrl(cleanUrl);
-      if (surflyProxyUrl) {
-        console.log(`  [Webfuse/nav] Proxy URL: ${surflyProxyUrl.substring(0, 120)}`);
-        await state.frame.evaluate((u: string) => { window.location.href = u; }, surflyProxyUrl);
-      } else {
-        throw new Error(`Cannot navigate to ${cleanUrl}: unable to construct proxy URL from frame ${state.frame.url()}`);
-      }
-
-      // Wait for the proxy frame URL to change from the previous URL (navigation started)
-      // then give the new page a moment to settle
-      const deadline = Date.now() + 30000;
-      let navigated = false;
-      while (Date.now() < deadline) {
-        const fUrl = state.frame.url();
-        if (fUrl !== prevFrameUrl) {
-          console.log(`  [Webfuse/nav] Frame URL changed → ${normalizeFrameUrl(fUrl).substring(0, 80)}`);
-          if (fUrl && !fUrl.includes('chrome-error') && !fUrl.includes('about:')) {
-            navigated = true;
-            await state.page.waitForTimeout(5000);
-            break;
+  private createSession(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const spaceMatch = this.spaceUrl.match(/\/\+([^/]+)/);
+      const spaceKey = spaceMatch?.[1] ?? 'default';
+      const body = JSON.stringify({ space: spaceKey });
+      const reqOptions: https.RequestOptions = {
+        hostname: 'webfu.se',
+        port: 443,
+        path: '/api/sessions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+      };
+      const req = https.request(reqOptions, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data) as { session_id?: string; id?: string; error?: string };
+            const id = parsed.session_id ?? parsed.id;
+            if (id) return resolve(id);
+            reject(new Error(`Session creation failed: ${data.slice(0, 200)}`));
+          } catch {
+            reject(new Error(`Failed to parse session response: ${data.slice(0, 200)}`));
           }
-        }
-        await state.page.waitForTimeout(500);
-      }
-      if (!navigated) {
-        console.log(`  [Webfuse/nav] Frame URL did not change after 30s (prevUrl: ${normalizeFrameUrl(prevFrameUrl).substring(0, 60)})`);
-        await state.page.waitForTimeout(5000);
-      }
-    }
-
-    // We use a Proxy to intercept specific methods
-    // Note: 'page' here is the original outer page (kept for fallback/default forwarding),
-    // but all frame interactions use state.frame / state.page (mutable, updated on reopen)
-    return new Proxy(page, {
-      get(_outerPage, prop) {
-        // goto: navigate inside the Surfly proxy; detect cross-origin and reopen session
-        if (prop === 'goto') {
-          return async (url: string, _options?: Record<string, unknown>) => {
-            const realUrl = normalizeFrameUrl(url);
-            console.log(`  [Webfuse/frame] goto: ${realUrl}`);
-            const currentUrl = normalizeFrameUrl(state.frame.url());
-            if (currentUrl && !currentUrl.includes('about:') && !currentUrl.includes('chrome-error')) {
-              urlHistory.push(currentUrl);
-            }
-            try {
-              await navigateProxy(realUrl);
-            } catch {
-              await state.page.waitForTimeout(3000);
-            }
-            return null as unknown as import('playwright').Response;
-          };
-        }
-
-        // goBack: navigate to the previous URL
-        if (prop === 'goBack') {
-          return async (_options?: Record<string, unknown>) => {
-            console.log(`  [Webfuse/frame] goBack intercepted`);
-            try {
-              let backUrl = urlHistory.pop() ?? '';
-              if (!backUrl) {
-                backUrl = await state.frame.evaluate(() => document.referrer).catch(() => '');
-              }
-              if (backUrl) {
-                console.log(`  [Webfuse/frame] goBack → ${backUrl.substring(0, 80)}`);
-                await navigateProxy(backUrl);
-              } else {
-                console.log(`  [Webfuse/frame] goBack — no URL to go back to, waiting`);
-                await state.page.waitForTimeout(3000);
-              }
-            } catch (e) {
-              console.log(`  [Webfuse/frame] goBack failed: ${e}`);
-            }
-            return null as unknown as import('playwright').Response;
-          };
-        }
-
-        // Forward $ and $$ to the proxy frame (use state.frame for live binding)
-        if (prop === '$') {
-          return (selector: string) => state.frame.$(selector);
-        }
-        if (prop === '$$') {
-          return (selector: string) => state.frame.$$(selector);
-        }
-        if (prop === '$eval') {
-          return (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
-            state.frame.$eval(selector as string, fn as (...args: unknown[]) => unknown, ...args);
-        }
-        if (prop === '$$eval') {
-          return (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
-            state.frame.$$eval(selector as string, fn as (...args: unknown[]) => unknown, ...args);
-        }
-        if (prop === 'waitForFunction') {
-          return (fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
-            (state.frame as unknown as Record<string, (...a: unknown[]) => unknown>)['waitForFunction'](fn, ...args);
-        }
-        if (prop === 'waitForSelector') {
-          return (selector: string, options?: Record<string, unknown>) => {
-            const opts = options ? { ...options } : {};
-            if (typeof opts['timeout'] === 'number') {
-              opts['timeout'] = Math.max((opts['timeout'] as number) * 2, 40000);
-            } else {
-              opts['timeout'] = 40000;
-            }
-            return state.frame.waitForSelector(selector as string, opts as Parameters<Frame['waitForSelector']>[1]);
-          };
-        }
-        if (prop === 'waitForURL') {
-          return async (pattern: string | RegExp, options?: Record<string, unknown>) => {
-            const deadline = Date.now() + ((options?.timeout as number) ?? 30000);
-            while (Date.now() < deadline) {
-              const u = state.frame.url();
-              if (typeof pattern === 'string' && u.includes(pattern.replace(/\*/g, ''))) return;
-              if (pattern instanceof RegExp && pattern.test(u)) return;
-              await state.page.waitForTimeout(500);
-            }
-          };
-        }
-        if (prop === 'fill') {
-          return (selector: string, value: string, options?: Record<string, unknown>) => state.frame.fill(selector, value, options as Parameters<Frame['fill']>[2]);
-        }
-        if (prop === 'click') {
-          return (selector: string, options?: Record<string, unknown>) => state.frame.click(selector, options as Parameters<Frame['click']>[1]);
-        }
-        if (prop === 'type') {
-          return (selector: string, text: string, options?: Record<string, unknown>) => state.frame.type(selector, text, options as Parameters<Frame['type']>[2]);
-        }
-        if (prop === 'selectOption') {
-          return (selector: string, values: unknown, options?: Record<string, unknown>) =>
-            state.frame.selectOption(selector, values as string, options as Parameters<Frame['selectOption']>[2]);
-        }
-        if (prop === 'check') {
-          return (selector: string, options?: Record<string, unknown>) =>
-            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['check'](selector, options);
-        }
-        if (prop === 'uncheck') {
-          return (selector: string, options?: Record<string, unknown>) =>
-            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['uncheck'](selector, options);
-        }
-        if (prop === 'isVisible') {
-          return (selector: string, options?: Record<string, unknown>) =>
-            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['isVisible'](selector, options);
-        }
-        if (prop === 'isChecked') {
-          return (selector: string, options?: Record<string, unknown>) =>
-            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['isChecked'](selector, options);
-        }
-        if (prop === 'press') {
-          return (selector: string, key: string, options?: Record<string, unknown>) =>
-            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['press'](selector, key, options);
-        }
-        if (prop === 'dispatchEvent') {
-          return (selector: string, type: string, eventInit?: Record<string, unknown>, options?: Record<string, unknown>) =>
-            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['dispatchEvent'](selector, type, eventInit, options);
-        }
-        if (prop === 'evaluate') {
-          return (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => state.frame.evaluate(fn, ...args);
-        }
-        if (prop === 'title') {
-          return () => state.frame.title();
-        }
-        if (prop === 'url') {
-          return () => normalizeFrameUrl(state.frame.url());
-        }
-        if (prop === 'content') {
-          return () => state.frame.content();
-        }
-        if (prop === 'waitForLoadState') {
-          return (loadState?: string, options?: Record<string, unknown>) =>
-            state.frame.waitForLoadState(loadState as Parameters<Frame['waitForLoadState']>[0], options as Parameters<Frame['waitForLoadState']>[1]);
-        }
-        if (prop === 'waitForTimeout') {
-          return (ms: number) => state.page.waitForTimeout(ms);
-        }
-        if (prop === 'context') {
-          return () => state.ctx;
-        }
-        if (prop === 'screenshot') {
-          return (options?: Record<string, unknown>) => state.page.screenshot(options as Parameters<Page['screenshot']>[0]);
-        }
-        // locator: forward to proxy frame via state.page (which has the live context)
-        if (prop === 'locator') {
-          return (selector: string, options?: Record<string, unknown>) => {
-            // Create a frame locator — Playwright Frame supports locator()
-            return (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['locator'](selector, options);
-          };
-        }
-        if (prop === 'textContent') {
-          return (selector: string, options?: Record<string, unknown>) =>
-            state.frame.textContent(selector, options as Parameters<Frame['textContent']>[1]);
-        }
-        // Default: forward to the live page (state.page, not the original page)
-        const livePage = state.page;
-        const val = (livePage as unknown as Record<string | symbol, unknown>)[prop as string | symbol];
-        if (typeof val === 'function') return val.bind(livePage);
-        return val;
-      },
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(15000, () => { req.destroy(); reject(new Error('Session creation timed out')); });
+      req.write(body);
+      req.end();
     });
   }
 
-  /**
-   * Wait for Surfly to redirect the page to a session URL (pattern: /sXXX).
-   */
-  private async waitForSessionUrl(page: Page): Promise<string> {
-    const deadline = Date.now() + 15000;
-    let lastUrl = page.url();
-    while (Date.now() < deadline) {
-      const url = page.url();
-      if (url.match(/\/s\w{10,}(\/|$)/)) return url;
-      if (url !== lastUrl) {
-        lastUrl = url;
-        console.log(`  [Webfuse] URL: ${url}`);
+  async openUrl(url: string): Promise<Page> {
+    const api = this.getApi();
+    const sessionId = await this.resolveSessionId();
+    this._activeSessionId = sessionId;
+
+    console.log(`  [Webfuse] Navigating to: ${url}`);
+    await api.navigate(sessionId, url);
+
+    // Prime the URL cache from actual page state
+    let initialUrl = url;
+    try {
+      const info = await api.pageInfo(sessionId);
+      if (info.url) initialUrl = info.url;
+    } catch { /* use requested URL */ }
+
+    return this.createPageProxy(api, sessionId, initialUrl) as unknown as Page;
+  }
+
+  private createPageProxy(api: AutomationApi, sessionId: string, initialUrl = ''): object {
+    const urlHistory: string[] = [];
+    let cachedUrl = initialUrl;
+
+    const refreshUrl = async (): Promise<string> => {
+      try {
+        const info = await api.pageInfo(sessionId);
+        if (info.url) cachedUrl = info.url;
+        return cachedUrl;
+      } catch {
+        return cachedUrl;
       }
-      await page.waitForTimeout(200);
-    }
-    return page.url();
+    };
+
+    // Minimal fake ElementHandle for selectors returned by $ / $$
+    const makeHandle = (selector: string) => ({
+      click: () => api.click(sessionId, selector),
+      fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
+      type: (text: string) => api.type(sessionId, selector, text),
+      press: (key: string) => api.keyPress(sessionId, selector, key),
+      textContent: async () => {
+        const html = await api.domSnapshot(sessionId);
+        return extractText(html, selector);
+      },
+      getAttribute: async (name: string) => {
+        const html = await api.domSnapshot(sessionId);
+        return extractAttr(html, selector, name);
+      },
+      isVisible: async () => {
+        const html = await api.domSnapshot(sessionId);
+        return selectorIn(html, selector);
+      },
+      evaluate: async (_fn: unknown) => null,
+    });
+
+    const proxy: Record<string, unknown> = {
+      // --- Navigation ---
+      goto: async (targetUrl: string, _options?: Record<string, unknown>) => {
+        if (cachedUrl) urlHistory.push(cachedUrl);
+        console.log(`  [Webfuse/nav] goto: ${targetUrl}`);
+        await api.navigate(sessionId, targetUrl);
+        await refreshUrl();
+        return null;
+      },
+
+      goBack: async (_options?: Record<string, unknown>) => {
+        const backUrl = urlHistory.pop();
+        if (backUrl) {
+          console.log(`  [Webfuse/nav] goBack → ${backUrl}`);
+          await api.navigate(sessionId, backUrl);
+          await refreshUrl();
+        }
+        return null;
+      },
+
+      url: () => cachedUrl,
+
+      title: async () => {
+        const info = await api.pageInfo(sessionId);
+        return info.title;
+      },
+
+      content: () => api.domSnapshot(sessionId, { webfuseIDs: true }),
+
+      screenshot: (_options?: Record<string, unknown>) => api.guiSnapshot(sessionId),
+
+      // --- Actions ---
+      click: async (selector: string, _options?: Record<string, unknown>) => {
+        await api.click(sessionId, selector);
+        await sleep(300);
+      },
+
+      fill: async (selector: string, value: string, _options?: Record<string, unknown>) => {
+        await api.type(sessionId, selector, value, { overwrite: true });
+      },
+
+      type: async (selector: string, text: string, _options?: Record<string, unknown>) => {
+        await api.type(sessionId, selector, text, { overwrite: false });
+      },
+
+      press: async (selector: string, key: string, _options?: Record<string, unknown>) => {
+        await api.keyPress(sessionId, selector, key);
+        await sleep(300);
+      },
+
+      selectOption: async (selector: string, values: unknown, _options?: Record<string, unknown>) => {
+        const value = Array.isArray(values)
+          ? (typeof values[0] === 'object' && values[0] !== null && 'label' in (values[0] as object)
+              ? (values[0] as { label: string }).label
+              : (values[0] as string))
+          : (typeof values === 'object' && values !== null && 'label' in (values as object)
+              ? (values as { label: string }).label
+              : (values as string));
+        await api.select(sessionId, selector, value);
+        return [];
+      },
+
+      check: async (selector: string, _options?: Record<string, unknown>) => {
+        await api.click(sessionId, selector);
+      },
+
+      uncheck: async (selector: string, _options?: Record<string, unknown>) => {
+        await api.click(sessionId, selector);
+      },
+
+      dispatchEvent: async (selector: string, type: string, _eventInit?: Record<string, unknown>) => {
+        if (type === 'click') await api.click(sessionId, selector);
+      },
+
+      // --- DOM queries ---
+      $: async (selector: string) => {
+        const html = await api.domSnapshot(sessionId);
+        return selectorIn(html, selector) ? makeHandle(selector) : null;
+      },
+
+      $$: async (selector: string) => {
+        const html = await api.domSnapshot(sessionId);
+        const count = countIn(html, selector);
+        return Array.from({ length: count }, (_, i) =>
+          makeHandle(`${selector}:nth-of-type(${i + 1})`)
+        );
+      },
+
+      $eval: async (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
+        void fn; void args;
+        const html = await api.domSnapshot(sessionId);
+        return extractText(html, selector);
+      },
+
+      $$eval: async (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
+        void fn; void args;
+        const html = await api.domSnapshot(sessionId);
+        return [extractText(html, selector)];
+      },
+
+      // --- State inspection ---
+      isVisible: async (selector: string, _options?: Record<string, unknown>) => {
+        const html = await api.domSnapshot(sessionId);
+        return selectorIn(html, selector);
+      },
+
+      isChecked: async (selector: string, _options?: Record<string, unknown>) => {
+        const html = await api.domSnapshot(sessionId);
+        return selectorIn(html, selector) && html.includes('checked');
+      },
+
+      textContent: async (selector: string, _options?: Record<string, unknown>) => {
+        const html = await api.domSnapshot(sessionId);
+        return extractText(html, selector);
+      },
+
+      // --- Evaluate (best-effort: returns domSnapshot HTML) ---
+      evaluate: async (fn: ((...args: unknown[]) => unknown) | string, ...args: unknown[]) => {
+        void fn; void args;
+        return api.domSnapshot(sessionId);
+      },
+
+      // --- Wait helpers ---
+      waitForSelector: async (selector: string, options?: Record<string, unknown>) => {
+        const timeout = (options?.['timeout'] as number | undefined) ?? 30000;
+        const deadline = Date.now() + timeout;
+        while (Date.now() < deadline) {
+          try {
+            const html = await api.domSnapshot(sessionId);
+            if (selectorIn(html, selector)) return makeHandle(selector);
+          } catch { /* retry */ }
+          await sleep(1000);
+        }
+        throw new Error(`Timeout waiting for selector: ${selector}`);
+      },
+
+      waitForURL: async (pattern: string | RegExp, options?: Record<string, unknown>) => {
+        const timeout = (options?.['timeout'] as number | undefined) ?? 30000;
+        const deadline = Date.now() + timeout;
+        while (Date.now() < deadline) {
+          const url = await refreshUrl();
+          if (typeof pattern === 'string' && url.includes(pattern.replace(/\*/g, ''))) return;
+          if (pattern instanceof RegExp && pattern.test(url)) return;
+          await sleep(500);
+        }
+      },
+
+      waitForLoadState: async (_state?: string, _options?: Record<string, unknown>) => {
+        await api.wait(sessionId).catch(() => {});
+      },
+
+      waitForTimeout: (ms: number) => sleep(ms),
+
+      waitForFunction: async (_fn: unknown, ..._args: unknown[]) => {
+        await sleep(2000);
+        return null;
+      },
+
+      // --- Locator (facade over click/fill) ---
+      locator: (selector: string, _options?: Record<string, unknown>) => ({
+        click: (opts?: Record<string, unknown>) => {
+          void opts;
+          return api.click(sessionId, selector);
+        },
+        fill: (value: string, opts?: Record<string, unknown>) => {
+          void opts;
+          return api.type(sessionId, selector, value, { overwrite: true });
+        },
+        type: (text: string, opts?: Record<string, unknown>) => {
+          void opts;
+          return api.type(sessionId, selector, text);
+        },
+        press: (key: string, opts?: Record<string, unknown>) => {
+          void opts;
+          return api.keyPress(sessionId, selector, key);
+        },
+        first: () => ({
+          click: () => api.click(sessionId, selector),
+          fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
+        }),
+        nth: (_index: number) => ({
+          click: () => api.click(sessionId, selector),
+          fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
+        }),
+        waitFor: async (_options?: Record<string, unknown>) => {
+          const timeout = (_options?.['timeout'] as number | undefined) ?? 30000;
+          const deadline = Date.now() + timeout;
+          while (Date.now() < deadline) {
+            const html = await api.domSnapshot(sessionId);
+            if (selectorIn(html, selector)) return;
+            await sleep(1000);
+          }
+        },
+        isVisible: async () => {
+          const html = await api.domSnapshot(sessionId);
+          return selectorIn(html, selector);
+        },
+      }),
+
+      // --- Context stub (used by some journeys) ---
+      context: () => ({
+        newPage: async () => proxy,
+        close: async () => {},
+      }),
+    };
+
+    return proxy;
   }
 
-  /**
-   * Extract the Surfly session key from a session URL.
-   */
-  private extractSessionKey(url: string): string {
-    const match = url.match(/\/(s\w{10,})(\/|$)/);
-    return match ? match[1]! : 'unknown';
+  /** Return the automation API instance (for agent integration) */
+  getAutomationApi(): AutomationApi | null {
+    return this._automationApi;
   }
 
-  /**
-   * Return the session key for the last opened page (for MCP control).
-   */
-  getLastSessionKey(): string | null {
-    return this.activeSessions.at(-1)?.sessionKey ?? null;
+  /** Return the active session ID */
+  getActiveSessionId(): string | null {
+    return this._activeSessionId;
   }
 
-  /**
-   * Close browser and clean up.
-   */
   async close(): Promise<void> {
-    this.activeSessions = [];
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+    if (this._automationApi) {
+      const log = this._automationApi.auditLog;
+      if (log.length > 0) {
+        console.log(`  [Webfuse] Session closed. Audit log: ${log.length} tool calls`);
+      }
     }
+    this._automationApi = null;
+    this._activeSessionId = null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// HTML helpers — simple regex-based, no external deps
+// ---------------------------------------------------------------------------
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function selectorIn(html: string, selector: string): boolean {
+  // #id
+  const idM = selector.match(/^#([\w-]+)/);
+  if (idM) return html.includes(`id="${idM[1]}"`);
+  // .class
+  const clsM = selector.match(/^\.([\w-]+)/);
+  if (clsM) return html.toLowerCase().includes('class=') && html.includes(clsM[1]!);
+  // [attr="val"]
+  const attrM = selector.match(/\[([^\]="]+)="([^"]+)"\]/);
+  if (attrM) return html.includes(`${attrM[1]}="${attrM[2]}"`);
+  // [attr]
+  const attrOnlyM = selector.match(/\[([^\]="]+)\]/);
+  if (attrOnlyM) return html.includes(`${attrOnlyM[1]}=`);
+  // tag
+  const tagM = selector.match(/^([\w-]+)/);
+  if (tagM) return html.toLowerCase().includes(`<${tagM[1]!.toLowerCase()}`);
+  return html.includes(selector);
+}
+
+function countIn(html: string, selector: string): number {
+  const tagM = selector.match(/^([\w-]+)/);
+  if (!tagM) return selectorIn(html, selector) ? 1 : 0;
+  const tag = tagM[1]!.toLowerCase();
+  return (html.toLowerCase().match(new RegExp(`<${tag}[\\s>]`, 'g')) ?? []).length;
+}
+
+function extractText(html: string, selector: string): string {
+  const idM = selector.match(/#([\w-]+)/);
+  if (idM) {
+    const m = html.match(new RegExp(`id="${idM[1]}"[^>]*>([^<]*)`, 'i'));
+    if (m) return m[1]?.trim() ?? '';
+  }
+  return '';
+}
+
+function extractAttr(html: string, selector: string, attrName: string): string | null {
+  const idM = selector.match(/#([\w-]+)/);
+  if (idM) {
+    const id = idM[1]!;
+    const m =
+      html.match(new RegExp(`id="${id}"[^>]*\\s${attrName}="([^"]*)"`, 'i')) ??
+      html.match(new RegExp(`${attrName}="([^"]*)"[^>]*id="${id}"`, 'i'));
+    if (m) return m[1] ?? null;
+  }
+  return null;
 }
