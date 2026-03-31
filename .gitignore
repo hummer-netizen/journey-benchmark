@@ -9,7 +9,9 @@ reports/*.md
 !reports/sprint-3-comparison.md
 !reports/sprint-3-comparison.json
 !reports/sprint-4-comparison.md
+!reports/sprint-4-comparison.json
 !reports/flakiness-sprint-4.md
+!reports/stakeholder_latest.md
 *.db
 .env
 .env.local

@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-03-31T02:55:36.921Z",
+  "providers": [
+    "DirectProvider",
+    "BrowserUseProvider"
+  ],
+  "rows": [
+    {
+      "journeyId": "J01",
+      "journeyName": "Simple Product Purchase",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 51580
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 51698
+        }
+      }
+    },
+    {
+      "journeyId": "J04",
+      "journeyName": "Cart Recovery (Expired Session)",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 17439
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 17398
+        }
+      }
+    },
+    {
+      "journeyId": "J05",
+      "journeyName": "Flight Search & Booking",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 284
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 273
+        }
+      }
+    },
+    {
+      "journeyId": "J08",
+      "journeyName": "Account Registration + Email Verify",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 376
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 357
+        }
+      }
+    },
+    {
+      "journeyId": "J09",
+      "journeyName": "Password Reset",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 482
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 457
+        }
+      }
+    },
+    {
+      "journeyId": "J12",
+      "journeyName": "Government Long Form (4-page)",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 491
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 497
+        }
+      }
+    },
+    {
+      "journeyId": "J14",
+      "journeyName": "Product Comparison",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 9687
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 9643
+        }
+      }
+    },
+    {
+      "journeyId": "J17",
+      "journeyName": "Return/Refund Request",
+      "cells": {
+        "DirectProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 354
+        },
+        "BrowserUseProvider": {
+          "status": "passed",
+          "successRate": 1,
+          "partialCompletion": 1,
+          "executionTimeMs": 337
+        }
+      }
+    }
+  ],
+  "summary": {
+    "DirectProvider": {
+      "successRate": 1,
+      "avgPartialCompletion": 1,
+      "avgJourneyTimeMs": 10086.625
+    },
+    "BrowserUseProvider": {
+      "successRate": 1,
+      "avgPartialCompletion": 1,
+      "avgJourneyTimeMs": 10082.5
+    }
+  }
+}
