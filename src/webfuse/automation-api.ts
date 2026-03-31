@@ -250,28 +250,39 @@ export class AutomationApi {
   // ---------------------------------------------------------------------------
 
   async click(sessionId: string, target: string, options?: Record<string, unknown>): Promise<string> {
-    return this.callTool('act_click', { session_id: sessionId, target, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId, target };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('act_click', args);
   }
 
   async type(sessionId: string, target: string, text: string, options?: { overwrite?: boolean }): Promise<string> {
-    // act_type does not accept 'overwrite' — strip it out; caller should clear the field first if needed
-    return this.callTool('act_type', { session_id: sessionId, target, text });
+    const args: Record<string, unknown> = { session_id: sessionId, target, text };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('act_type', args);
   }
 
   async keyPress(sessionId: string, target: string, key: string, options?: Record<string, unknown>): Promise<string> {
-    return this.callTool('act_keyPress', { session_id: sessionId, target, key, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId, target, key };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('act_keyPress', args);
   }
 
   async scroll(sessionId: string, target: string, amount: number, options?: Record<string, unknown>): Promise<string> {
-    return this.callTool('act_scroll', { session_id: sessionId, target, amount, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId, target, amount };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('act_scroll', args);
   }
 
   async mouseMove(sessionId: string, target: string, options?: Record<string, unknown>): Promise<string> {
-    return this.callTool('act_mouseMove', { session_id: sessionId, target, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId, target };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('act_mouseMove', args);
   }
 
   async select(sessionId: string, target: string, value: string, options?: Record<string, unknown>): Promise<string> {
-    return this.callTool('act_select', { session_id: sessionId, target, value, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId, target, value };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('act_select', args);
   }
 
   // ---------------------------------------------------------------------------
@@ -279,7 +290,9 @@ export class AutomationApi {
   // ---------------------------------------------------------------------------
 
   async domSnapshot(sessionId: string, options?: { webfuseIDs?: boolean }): Promise<string> {
-    return this.callTool('see_domSnapshot', { session_id: sessionId, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('see_domSnapshot', args);
   }
 
   async guiSnapshot(sessionId: string): Promise<Buffer> {
@@ -320,7 +333,9 @@ export class AutomationApi {
   }
 
   async accessibilityTree(sessionId: string, options?: Record<string, unknown>): Promise<string> {
-    return this.callTool('see_accessibilityTree', { session_id: sessionId, ...options });
+    const args: Record<string, unknown> = { session_id: sessionId };
+    if (options && Object.keys(options).length > 0) args['options'] = options;
+    return this.callTool('see_accessibilityTree', args);
   }
 
   async textSelection(sessionId: string): Promise<string> {
