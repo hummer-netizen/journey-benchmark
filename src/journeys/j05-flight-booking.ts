@@ -64,7 +64,9 @@ export class J05FlightBooking extends BaseJourney {
           if (!href) throw new Error('No flight select link found');
           const match = href.match(/\/book\/(\d+)/);
           if (match) this.flightId = match[1];
-          await page.goto(`${FLIGHT_APP_URL}${href}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Click the link directly (works with both direct and Surfly proxy navigation)
+          await link.click();
+          await page.waitForTimeout(3000);
         },
       },
       {

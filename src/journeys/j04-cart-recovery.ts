@@ -35,13 +35,9 @@ export class J04CartRecovery extends BaseJourney {
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found in search results');
-          // Use goto(href) so proxy-frame navigation works (link clicks may not navigate in Surfly)
-          const href = await link.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await link.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await link.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           // Select options if configurable or custom-option product
@@ -135,13 +131,9 @@ export class J04CartRecovery extends BaseJourney {
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found after session clear');
-          // Use goto(href) so proxy-frame navigation works
-          const href = await link.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await link.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await link.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           if (isMagento) {

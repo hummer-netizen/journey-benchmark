@@ -82,13 +82,9 @@ export class J14ProductComparison extends BaseJourney {
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error(`Need at least 2 products, found ${links.length}`);
-          // Use goto(href) so proxy-frame navigation is reliable (link clicks may not navigate in Surfly)
-          const href = await links[0]!.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await links[0]!.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await links[0]!.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(isMagento ? '.price-box' : selectors.productPrice, { timeout: 20000 });
           const product = await this.extractProductInfo(page, 0);
           this.products.push(product);
@@ -108,13 +104,9 @@ export class J14ProductComparison extends BaseJourney {
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error('Second product not found in listing');
-          // Use goto(href) so proxy-frame navigation is reliable
-          const href = await links[1]!.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await links[1]!.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await links[1]!.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(isMagento ? '.price-box' : selectors.productPrice, { timeout: 20000 });
           const product = await this.extractProductInfo(page, 1);
           this.products.push(product);
@@ -145,13 +137,9 @@ export class J14ProductComparison extends BaseJourney {
           await page.goto(this.searchResultsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.productLink, { timeout: 15000 });
           const links = await page.$$(selectors.productLink);
-          // Use goto(href) so proxy-frame navigation is reliable
-          const href = await links[cheaperIndex]!.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await links[cheaperIndex]!.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await links[cheaperIndex]!.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
           console.log(`  Selected: "${cheaper.name}"`);
         },

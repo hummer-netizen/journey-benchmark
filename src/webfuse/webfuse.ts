@@ -90,7 +90,7 @@ export class WebfuseProvider implements AutomationProvider {
         const url = f.url();
         if (f.name().startsWith('_surfly_tab1000') && url && !url.includes('chrome-error') && !url.includes('about:')) {
           // Wait a moment for the frame to stabilise
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(3000);
           return f;
         }
       }
@@ -267,7 +267,7 @@ export class WebfuseProvider implements AutomationProvider {
           console.log(`  [Webfuse/nav] Frame URL changed → ${normalizeFrameUrl(fUrl).substring(0, 80)}`);
           if (fUrl && !fUrl.includes('chrome-error') && !fUrl.includes('about:')) {
             navigated = true;
-            await state.page.waitForTimeout(4000);
+            await state.page.waitForTimeout(5000);
             break;
           }
         }
@@ -275,7 +275,7 @@ export class WebfuseProvider implements AutomationProvider {
       }
       if (!navigated) {
         console.log(`  [Webfuse/nav] Frame URL did not change after 30s (prevUrl: ${normalizeFrameUrl(prevFrameUrl).substring(0, 60)})`);
-        await state.page.waitForTimeout(3000);
+        await state.page.waitForTimeout(5000);
       }
     }
 
@@ -379,6 +379,30 @@ export class WebfuseProvider implements AutomationProvider {
           return (selector: string, values: unknown, options?: Record<string, unknown>) =>
             state.frame.selectOption(selector, values as string, options as Parameters<Frame['selectOption']>[2]);
         }
+        if (prop === 'check') {
+          return (selector: string, options?: Record<string, unknown>) =>
+            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['check'](selector, options);
+        }
+        if (prop === 'uncheck') {
+          return (selector: string, options?: Record<string, unknown>) =>
+            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['uncheck'](selector, options);
+        }
+        if (prop === 'isVisible') {
+          return (selector: string, options?: Record<string, unknown>) =>
+            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['isVisible'](selector, options);
+        }
+        if (prop === 'isChecked') {
+          return (selector: string, options?: Record<string, unknown>) =>
+            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['isChecked'](selector, options);
+        }
+        if (prop === 'press') {
+          return (selector: string, key: string, options?: Record<string, unknown>) =>
+            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['press'](selector, key, options);
+        }
+        if (prop === 'dispatchEvent') {
+          return (selector: string, type: string, eventInit?: Record<string, unknown>, options?: Record<string, unknown>) =>
+            (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['dispatchEvent'](selector, type, eventInit, options);
+        }
         if (prop === 'evaluate') {
           return (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => state.frame.evaluate(fn, ...args);
         }
@@ -404,9 +428,21 @@ export class WebfuseProvider implements AutomationProvider {
         if (prop === 'screenshot') {
           return (options?: Record<string, unknown>) => state.page.screenshot(options as Parameters<Page['screenshot']>[0]);
         }
-        // Default: forward to the outer page
-        const val = (page as unknown as Record<string | symbol, unknown>)[prop as string | symbol];
-        if (typeof val === 'function') return val.bind(page);
+        // locator: forward to proxy frame via state.page (which has the live context)
+        if (prop === 'locator') {
+          return (selector: string, options?: Record<string, unknown>) => {
+            // Create a frame locator — Playwright Frame supports locator()
+            return (state.frame as unknown as Record<string, (...args: unknown[]) => unknown>)['locator'](selector, options);
+          };
+        }
+        if (prop === 'textContent') {
+          return (selector: string, options?: Record<string, unknown>) =>
+            state.frame.textContent(selector, options as Parameters<Frame['textContent']>[1]);
+        }
+        // Default: forward to the live page (state.page, not the original page)
+        const livePage = state.page;
+        const val = (livePage as unknown as Record<string | symbol, unknown>)[prop as string | symbol];
+        if (typeof val === 'function') return val.bind(livePage);
         return val;
       },
     });

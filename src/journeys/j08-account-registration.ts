@@ -47,18 +47,12 @@ export class J08AccountRegistration extends BaseJourney {
   private buildSteps(): JourneyStep[] {
     return [
       {
-        name: 'Navigate to auth app homepage',
+        name: 'Navigate to registration page',
         execute: async (page: Page) => {
           // Generate a fresh email for each run to avoid "already registered" collisions
           this.testEmail = `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@example.com`;
-          await page.goto(AUTH_APP_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await page.waitForSelector('a[href="/register"]', { timeout: 10000 });
-        },
-      },
-      {
-        name: 'Navigate to registration page',
-        execute: async (page: Page) => {
-          await page.goto(`${AUTH_APP_URL}/register`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Navigate directly to /register (avoids same-origin proxy navigation issues in Surfly)
+          await page.goto(`${AUTH_APP_URL}/register`, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector('#register-btn', { timeout: 10000 });
         },
       },
