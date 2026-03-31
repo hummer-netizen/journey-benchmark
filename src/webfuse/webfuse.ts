@@ -12,22 +12,21 @@ import { AutomationApi } from './automation-api.js';
  * Env vars:
  *   WEBFUSE_API_KEY      — ak_* key for the MCP server (required)
  *   WEBFUSE_MCP_ENDPOINT — MCP server URL (default: https://session-mcp.webfu.se/mcp)
- *   WEBFUSE_SESSION_ID   — existing session ID (skip creation)
- *   WEBFUSE_SPACE_URL    — space URL for REST API session creation fallback
+ *   WEBFUSE_SESSION_ID   — existing session ID (required — no REST session creation)
  */
 export class WebfuseProvider implements AutomationProvider {
   private readonly apiKey: string;
   private readonly mcpEndpoint: string;
-  private readonly spaceUrl: string;
   private _automationApi: AutomationApi | null = null;
   private _activeSessionId: string | null = null;
 
   constructor(_headless = true) {
     const apiKey = process.env['WEBFUSE_API_KEY'];
     if (!apiKey) throw new Error('WEBFUSE_API_KEY is not set — cannot use WebfuseProvider');
+    const sessionId = process.env['WEBFUSE_SESSION_ID'];
+    if (!sessionId) throw new Error('WEBFUSE_SESSION_ID is not set — Track C results marked PENDING_CREDENTIAL');
     this.apiKey = apiKey;
     this.mcpEndpoint = process.env['WEBFUSE_MCP_ENDPOINT'] ?? 'https://session-mcp.webfu.se/mcp';
-    this.spaceUrl = process.env['WEBFUSE_SPACE_URL'] ?? 'https://webfu.se/+benchmark-webarena/';
   }
 
   private getApi(): AutomationApi {
@@ -40,67 +39,58 @@ export class WebfuseProvider implements AutomationProvider {
     return this._automationApi;
   }
 
-  private async resolveSessionId(): Promise<string> {
+  private resolveSessionId(): string {
     const envSessionId = process.env['WEBFUSE_SESSION_ID'];
     if (envSessionId) {
       console.log(`  [Webfuse] Using session: ${envSessionId}`);
       return envSessionId;
     }
-    const sessionId = await this.createSession();
-    console.log(`  [Webfuse] Created session: ${sessionId}`);
-    return sessionId;
+    throw new Error('WEBFUSE_SESSION_ID is not set — Track C results marked PENDING_CREDENTIAL');
   }
 
-  private createSession(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const spaceMatch = this.spaceUrl.match(/\/\+([^/]+)/);
-      const spaceKey = spaceMatch?.[1] ?? 'default';
-      const body = JSON.stringify({ space: spaceKey });
+  /** Terminate a session via DELETE /api/v2/sessions/{id}/ — best-effort, never throws */
+  private async terminateSession(id: string): Promise<void> {
+    return new Promise<void>((resolve) => {
       const reqOptions: https.RequestOptions = {
         hostname: 'webfu.se',
         port: 443,
-        path: '/api/sessions',
-        method: 'POST',
+        path: `/api/v2/sessions/${id}/`,
+        method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(body),
           Authorization: `Bearer ${this.apiKey}`,
         },
       };
       const req = https.request(reqOptions, (res) => {
-        let data = '';
-        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
-        res.on('end', () => {
-          try {
-            const parsed = JSON.parse(data) as { session_id?: string; id?: string; error?: string };
-            const id = parsed.session_id ?? parsed.id;
-            if (id) return resolve(id);
-            reject(new Error(`Session creation failed: ${data.slice(0, 200)}`));
-          } catch {
-            reject(new Error(`Failed to parse session response: ${data.slice(0, 200)}`));
-          }
-        });
+        res.resume(); // drain response body
+        res.on('end', () => resolve());
       });
-      req.on('error', reject);
-      req.setTimeout(15000, () => { req.destroy(); reject(new Error('Session creation timed out')); });
-      req.write(body);
+      req.on('error', (err) => {
+        console.warn(`  [Webfuse] Warning: failed to terminate session ${id}: ${err.message}`);
+        resolve();
+      });
+      req.setTimeout(5000, () => {
+        req.destroy();
+        console.warn(`  [Webfuse] Warning: session termination timed out for ${id}`);
+        resolve();
+      });
       req.end();
     });
   }
 
   async openUrl(url: string): Promise<Page> {
     const api = this.getApi();
-    const sessionId = await this.resolveSessionId();
+    const sessionId = this.resolveSessionId();
     this._activeSessionId = sessionId;
 
     console.log(`  [Webfuse] Navigating to: ${url}`);
     await api.navigate(sessionId, url);
 
-    // Prime the URL cache from actual page state
+    // Tab activation: call page_info as tab focus probe, prime URL cache
     let initialUrl = url;
     try {
       const info = await api.pageInfo(sessionId);
       if (info.url) initialUrl = info.url;
+      console.log(`  [Webfuse] Tab activated for session: ${sessionId}`);
     } catch { /* use requested URL */ }
 
     return this.createPageProxy(api, sessionId, initialUrl) as unknown as Page;
@@ -361,6 +351,9 @@ export class WebfuseProvider implements AutomationProvider {
   }
 
   async close(): Promise<void> {
+    if (this._activeSessionId) {
+      await this.terminateSession(this._activeSessionId);
+    }
     if (this._automationApi) {
       const log = this._automationApi.auditLog;
       if (log.length > 0) {

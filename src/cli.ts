@@ -187,6 +187,7 @@ async function runComparison(
 ): Promise<void> {
   const providerNames = ['direct', 'webfuse', 'webfuse-mcp', 'browser-use'];
   const results = [];
+  const pendingCredentialProviders: string[] = [];
 
   console.log(`\nComparison Run — providers: ${providerNames.join(', ')}`);
   console.log(`Journeys: ${journeys.map(j => j.id).join(', ')}\n`);
@@ -204,7 +205,37 @@ async function runComparison(
     try {
       provider = createProvider(options.headless as boolean, proxyPort);
     } catch (err) {
-      console.warn(`Skipping ${providerName}: ${err instanceof Error ? err.message : err}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`Skipping ${providerName}: ${errMsg}`);
+      // For webfuse providers with PENDING_CREDENTIAL, include a placeholder result
+      if ((providerName === 'webfuse' || providerName === 'webfuse-mcp') && errMsg.includes('PENDING_CREDENTIAL')) {
+        const now = new Date().toISOString();
+        const displayName = providerName === 'webfuse' ? 'WebfuseProvider' : 'WebfuseMcpProvider';
+        pendingCredentialProviders.push(displayName);
+        results.push({
+          startedAt: now,
+          finishedAt: now,
+          provider: displayName,
+          site: options.site as string,
+          targetUrl: '',
+          totalJourneys: journeys.length,
+          passed: 0,
+          failed: journeys.length,
+          journeys: journeys.map(j => ({
+            journeyId: j.id,
+            journeyName: j.name,
+            status: 'error' as const,
+            executionTimeMs: 0,
+            partialCompletion: 0,
+            stepsTotal: j.steps.length,
+            stepsCompleted: 0,
+            steps: [],
+            errorMessage: 'PENDING_CREDENTIAL',
+            startedAt: now,
+            finishedAt: now,
+          })),
+        });
+      }
       continue;
     }
 
@@ -232,6 +263,14 @@ async function runComparison(
   }
 
   const { json, markdown } = generateComparisonReport(results, options.reports as string);
+
+  // Append PENDING_CREDENTIAL note to markdown if any webfuse providers were skipped
+  if (pendingCredentialProviders.length > 0) {
+    const fs = await import('fs');
+    const note = `\n---\n\n**Note:** ${pendingCredentialProviders.join(', ')} (Track C): PENDING_CREDENTIAL — WEBFUSE_SESSION_ID not set on dev machine. Re-run required once an active Webfuse session ID is provisioned.\n`;
+    fs.appendFileSync(markdown, note, 'utf-8');
+  }
+
   console.log(`\nComparison JSON:     ${json}`);
   console.log(`Comparison Markdown: ${markdown}`);
 

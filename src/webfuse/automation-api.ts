@@ -7,6 +7,15 @@ import * as http from 'node:http';
  * Sends JSON-RPC tool calls to the MCP endpoint authenticated with an ak_* key.
  * All page interaction (perception + actuation) goes through this client.
  *
+ * MCP session lifecycle:
+ *   1. POST /mcp with initialize → server returns Mcp-Session-Id header
+ *   2. POST /mcp with notifications/initialized (include Mcp-Session-Id header)
+ *   3. All subsequent requests include Mcp-Session-Id header
+ *
+ * Responses are SSE-formatted:
+ *   event: message
+ *   data: {"jsonrpc":"2.0","id":1,"result":{...}}
+ *
  * Env vars:
  *   WEBFUSE_API_KEY      — ak_* Bearer token
  *   WEBFUSE_MCP_ENDPOINT — MCP server URL (default: https://session-mcp.webfu.se/mcp)
@@ -45,6 +54,8 @@ export class AutomationApi {
   private readonly timeout: number;
   private callCounter = 0;
   private readonly _auditLog: AuditEntry[] = [];
+  private _mcpSessionId: string | null = null;
+  private _initialized = false;
 
   constructor(options: AutomationApiOptions) {
     this.apiKey = options.apiKey;
@@ -52,7 +63,7 @@ export class AutomationApi {
     this.timeout = options.timeout ?? 15000;
   }
 
-  /** Low-level HTTP POST — overrideable in tests via subclass */
+  /** Low-level HTTP POST returning body only — overrideable in tests via subclass */
   protected post(url: string, body: string, headers: Record<string, string>): Promise<string> {
     return new Promise((resolve, reject) => {
       const parsed = new URL(url);
@@ -83,7 +94,108 @@ export class AutomationApi {
     });
   }
 
+  /** Low-level HTTP POST returning body + response headers — overrideable in tests */
+  protected postFull(url: string, body: string, headers: Record<string, string>): Promise<{ body: string; headers: Record<string, string> }> {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const lib = (parsed.protocol === 'https:' ? https : http) as unknown as typeof https;
+      const reqOptions: https.RequestOptions = {
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          ...headers,
+        },
+      };
+      const req = lib.request(reqOptions, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        res.on('end', () => resolve({
+          body: data,
+          headers: res.headers as Record<string, string>,
+        }));
+      });
+      req.on('error', reject);
+      req.setTimeout(this.timeout, () => {
+        req.destroy();
+        reject(new Error(`MCP init request timed out after ${this.timeout}ms`));
+      });
+      req.write(body);
+      req.end();
+    });
+  }
+
+  /** Parse SSE-formatted MCP response, extracting JSON from "data: {...}" lines.
+   *  Falls back to plain JSON parse for non-SSE responses (e.g. test mocks). */
+  private parseSseData(raw: string): McpResponse {
+    for (const line of raw.split('\n')) {
+      if (line.startsWith('data: ')) {
+        const json = line.slice(6).trim();
+        try {
+          return JSON.parse(json) as McpResponse;
+        } catch {
+          // not valid JSON, try next line
+        }
+      }
+    }
+    // Fallback: try plain JSON (for non-SSE responses or test mocks)
+    try {
+      return JSON.parse(raw) as McpResponse;
+    } catch {
+      throw new Error(`Failed to parse MCP response: ${raw.slice(0, 200)}`);
+    }
+  }
+
+  /** Lazy MCP session initialization — called once before the first tool call.
+   *  1. POST initialize → capture Mcp-Session-Id from response header
+   *  2. POST notifications/initialized with session header
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this._initialized) return;
+
+    // Step 1: initialize
+    const initBody = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 0,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'journey-benchmark', version: '1.0.0' },
+      },
+    });
+
+    const initResp = await this.postFull(this.mcpEndpoint, initBody, {
+      Authorization: `Bearer ${this.apiKey}`,
+    });
+
+    const sessionId = initResp.headers['mcp-session-id'];
+    if (sessionId) {
+      this._mcpSessionId = sessionId;
+    }
+
+    // Step 2: notifications/initialized
+    const notifyBody = JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'notifications/initialized',
+    });
+    const notifyHeaders: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+    };
+    if (this._mcpSessionId) {
+      notifyHeaders['Mcp-Session-Id'] = this._mcpSessionId;
+    }
+    await this.postFull(this.mcpEndpoint, notifyBody, notifyHeaders);
+
+    this._initialized = true;
+  }
+
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
+    await this.ensureInitialized();
+
     const id = ++this.callCounter;
     const body = JSON.stringify({
       jsonrpc: '2.0',
@@ -92,13 +204,18 @@ export class AutomationApi {
       params: { name, arguments: args },
     });
 
-    const raw = await this.post(this.mcpEndpoint, body, {
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
-    });
+    };
+    if (this._mcpSessionId) {
+      headers['Mcp-Session-Id'] = this._mcpSessionId;
+    }
+
+    const raw = await this.post(this.mcpEndpoint, body, headers);
 
     let parsed: McpResponse;
     try {
-      parsed = JSON.parse(raw) as McpResponse;
+      parsed = this.parseSseData(raw);
     } catch {
       throw new Error(`Failed to parse MCP response for [${name}]: ${raw.slice(0, 200)}`);
     }
@@ -162,6 +279,8 @@ export class AutomationApi {
   }
 
   async guiSnapshot(sessionId: string): Promise<Buffer> {
+    await this.ensureInitialized();
+
     const id = ++this.callCounter;
     const body = JSON.stringify({
       jsonrpc: '2.0',
@@ -169,11 +288,17 @@ export class AutomationApi {
       method: 'tools/call',
       params: { name: 'see_guiSnapshot', arguments: { session_id: sessionId } },
     });
-    const raw = await this.post(this.mcpEndpoint, body, {
+
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
-    });
+    };
+    if (this._mcpSessionId) {
+      headers['Mcp-Session-Id'] = this._mcpSessionId;
+    }
+
+    const raw = await this.post(this.mcpEndpoint, body, headers);
     let parsed: McpResponse;
-    try { parsed = JSON.parse(raw) as McpResponse; } catch {
+    try { parsed = this.parseSseData(raw); } catch {
       throw new Error(`Failed to parse guiSnapshot response: ${raw.slice(0, 200)}`);
     }
     if (parsed.error) throw new Error(`MCP tool error [see_guiSnapshot]: ${parsed.error.message}`);

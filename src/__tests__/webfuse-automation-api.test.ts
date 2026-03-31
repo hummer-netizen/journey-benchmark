@@ -18,6 +18,11 @@ class TestApi extends AutomationApi {
     this.responses.push(r);
   }
 
+  /** Override postFull (used for MCP session init) — returns empty headers, not tracked in calls */
+  protected override postFull(_url: string, _body: string, _headers: Record<string, string>): Promise<{ body: string; headers: Record<string, string> }> {
+    return Promise.resolve({ body: '', headers: {} });
+  }
+
   protected override post(url: string, body: string, _headers: Record<string, string>): Promise<string> {
     this.calls.push({ url, body });
     const req = JSON.parse(body) as { id: number };
