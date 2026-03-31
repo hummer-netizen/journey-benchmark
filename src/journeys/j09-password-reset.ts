@@ -85,6 +85,8 @@ export class J09PasswordReset extends BaseJourney {
       {
         name: 'Setup test account (register + verify)',
         execute: async (_page: Page) => {
+          // Generate a unique email per run to avoid collisions in flakiness assessments
+          this.testEmail = `reset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@example.com`;
           await this.setupTestAccount();
         },
       },
