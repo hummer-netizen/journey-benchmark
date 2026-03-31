@@ -1,7 +1,10 @@
 import * as https from 'node:https';
+import { createRequire } from 'node:module';
 import type { Page } from 'playwright';
 import type { AutomationProvider } from './provider.js';
 import { AutomationApi } from './automation-api.js';
+
+const _require = createRequire(import.meta.url);
 
 /**
  * WebfuseProvider — drives browser automation via the Webfuse Session MCP Server.
@@ -84,8 +87,7 @@ export class WebfuseProvider implements AutomationProvider {
   /** Launch headless Chromium and navigate to the session link to become the tab owner. */
   private async openSessionInBrowser(sessionLink: string): Promise<void> {
     // Dynamic require to avoid bundling issues
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pw = require('/home/deploy/projects/journey-benchmark/node_modules/playwright') as typeof import('playwright');
+    const pw = _require('/home/deploy/projects/journey-benchmark/node_modules/playwright') as typeof import('playwright');
     this._browser = await pw.chromium.launch({ headless: true, executablePath: '/usr/bin/chromium' });
     const page = await this._browser.newPage();
     await page.goto(sessionLink, { waitUntil: 'load', timeout: 20000 });
@@ -172,7 +174,7 @@ export class WebfuseProvider implements AutomationProvider {
       }
     };
 
-    const makeHandle = (selector: string) => ({
+    const makeHandle = (selector: string): Record<string, unknown> => ({
       click: () => api.click(sessionId, selector),
       fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
       type: (text: string) => api.type(sessionId, selector, text),
@@ -190,6 +192,16 @@ export class WebfuseProvider implements AutomationProvider {
         return selectorIn(html, selector);
       },
       evaluate: async (_fn: unknown) => null,
+      // Allow chained $$ calls on handles (e.g. waitForSelector result.$$('option'))
+      $$: async (childSelector: string) => {
+        const html = await api.domSnapshot(sessionId);
+        const count = countIn(html, childSelector);
+        return Array.from({ length: count }, (_, i) => makeHandle(`${childSelector}:nth-of-type(${i + 1})`));
+      },
+      $: async (childSelector: string) => {
+        const html = await api.domSnapshot(sessionId);
+        return selectorIn(html, childSelector) ? makeHandle(childSelector) : null;
+      },
     });
 
     const proxy: Record<string, unknown> = {
@@ -365,20 +377,41 @@ function sleep(ms: number): Promise<void> {
 }
 
 function selectorIn(html: string, selector: string): boolean {
-  const idM = selector.match(/^#([\w-]+)/);
-  if (idM) return html.includes(`id="${idM[1]}"`);
-  const clsM = selector.match(/^\.([\w-]+)/);
-  if (clsM) return html.toLowerCase().includes('class=') && html.includes(clsM[1]!);
-  const attrM = selector.match(/\[([^\]="]+)="([^"]+)"\]/);
+  // Handle comma-separated selectors: return true if any match
+  if (selector.includes(',')) {
+    return selector.split(',').some(s => selectorIn(html, s.trim()));
+  }
+  // Strip pseudo-selectors like :not(...), :nth-of-type(...), :visible for matching
+  const clean = selector.replace(/:[a-z-]+(\([^)]*\))?/g, '').trim();
+  // Find the last meaningful part (for descendant selectors like "ol.products .product-item-link")
+  const parts = clean.split(/\s+/);
+  const last = parts[parts.length - 1] ?? clean;
+
+  const idM = last.match(/^#?([\w-]+)#([\w-]+)|#([\w-]+)/);
+  const justId = last.match(/^#([\w-]+)/);
+  if (justId) return html.includes(`id="${justId[1]}"`);
+  const clsM = last.match(/\.([\w-]+)/);
+  if (clsM) return html.includes(clsM[1]!);
+  const attrM = last.match(/\[([^\]="]+)="([^"]+)"\]/);
   if (attrM) return html.includes(`${attrM[1]}="${attrM[2]}"`);
-  const attrOnlyM = selector.match(/\[([^\]="]+)\]/);
+  const attrOnlyM = last.match(/\[([^\]="]+)\]/);
   if (attrOnlyM) return html.includes(`${attrOnlyM[1]}=`);
-  const tagM = selector.match(/^([\w-]+)/);
+  const tagM = last.match(/^([\w-]+)/);
   if (tagM) return html.toLowerCase().includes(`<${tagM[1]!.toLowerCase()}`);
+  void idM;
   return html.includes(selector);
 }
 
 function countIn(html: string, selector: string): number {
+  // For class-based selectors (e.g. ".product-item-link", "ol.products .product-item-link"),
+  // count occurrences of the last class in the selector chain.
+  const lastClass = selector.match(/\.([\w-]+)(?:[^.#\s]*)$/);
+  if (lastClass) {
+    const cls = lastClass[1]!;
+    // Count opening tags that include this class
+    const matches = html.match(new RegExp(`class="[^"]*\\b${cls}\\b[^"]*"`, 'g')) ?? [];
+    return matches.length;
+  }
   const tagM = selector.match(/^([\w-]+)/);
   if (!tagM) return selectorIn(html, selector) ? 1 : 0;
   const tag = tagM[1]!.toLowerCase();

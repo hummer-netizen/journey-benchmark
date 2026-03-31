@@ -86,14 +86,15 @@ describe('AutomationApi', () => {
     expect(args['target']).toBe('#submit-btn');
   });
 
-  it('sends act_type with overwrite option', async () => {
+  it('sends act_type without overwrite (stripped per Webfuse API)', async () => {
     await api.type('sABC123', '#email', 'test@example.com', { overwrite: true });
     const req = JSON.parse(api.calls[0]!.body) as Record<string, unknown>;
     const params = req['params'] as Record<string, unknown>;
     expect(params['name']).toBe('act_type');
     const args = params['arguments'] as Record<string, unknown>;
     expect(args['text']).toBe('test@example.com');
-    expect(args['overwrite']).toBe(true);
+    // overwrite is intentionally stripped — act_type does not support it
+    expect(args['overwrite']).toBeUndefined();
   });
 
   it('sends act_keyPress', async () => {

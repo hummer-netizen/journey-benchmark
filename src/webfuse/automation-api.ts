@@ -170,6 +170,7 @@ export class AutomationApi {
 
     const initResp = await this.postFull(this.mcpEndpoint, initBody, {
       Authorization: `Bearer ${this.apiKey}`,
+      Accept: 'application/json, text/event-stream',
     });
 
     const sessionId = initResp.headers['mcp-session-id'];
@@ -184,6 +185,7 @@ export class AutomationApi {
     });
     const notifyHeaders: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
+      Accept: 'application/json, text/event-stream',
     };
     if (this._mcpSessionId) {
       notifyHeaders['Mcp-Session-Id'] = this._mcpSessionId;
@@ -206,6 +208,7 @@ export class AutomationApi {
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
+      Accept: 'application/json, text/event-stream',
     };
     if (this._mcpSessionId) {
       headers['Mcp-Session-Id'] = this._mcpSessionId;
@@ -251,7 +254,8 @@ export class AutomationApi {
   }
 
   async type(sessionId: string, target: string, text: string, options?: { overwrite?: boolean }): Promise<string> {
-    return this.callTool('act_type', { session_id: sessionId, target, text, ...options });
+    // act_type does not accept 'overwrite' — strip it out; caller should clear the field first if needed
+    return this.callTool('act_type', { session_id: sessionId, target, text });
   }
 
   async keyPress(sessionId: string, target: string, key: string, options?: Record<string, unknown>): Promise<string> {
