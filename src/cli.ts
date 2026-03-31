@@ -179,6 +179,23 @@ program
     process.exit(exitCode);
   });
 
+/** Build a fresh journey list for the given journey IDs using current env-resolved URLs */
+function buildJourneys(journeyIds: string[]): Journey[] {
+  const cfg = getSiteConfig();
+  resolveAppUrls();
+  const allJourneys: Record<string, Journey> = {
+    J01: new J01ProductPurchase(cfg),
+    J04: new J04CartRecovery(cfg),
+    J05: new J05FlightBooking(FLIGHT_APP_CONFIG),
+    J08: new J08AccountRegistration(AUTH_APP_CONFIG),
+    J09: new J09PasswordReset(AUTH_APP_CONFIG),
+    J12: new J12GovernmentForm(GOV_FORMS_CONFIG),
+    J14: new J14ProductComparison(cfg),
+    J17: new J17ReturnRefund(RETURN_PORTAL_CONFIG),
+  };
+  return journeyIds.map(id => allJourneys[id]).filter((j): j is Journey => j !== undefined);
+}
+
 async function runComparison(
   options: Record<string, unknown>,
   journeys: Journey[],
@@ -188,18 +205,25 @@ async function runComparison(
   const providerNames = ['direct', 'webfuse', 'webfuse-mcp', 'browser-use'];
   const results = [];
   const pendingCredentialProviders: string[] = [];
+  const journeyIds = journeys.map(j => j.id);
 
   console.log(`\nComparison Run — providers: ${providerNames.join(', ')}`);
-  console.log(`Journeys: ${journeys.map(j => j.id).join(', ')}\n`);
+  console.log(`Journeys: ${journeyIds.join(', ')}\n`);
 
   for (const providerName of providerNames) {
     process.env['AUTOMATION_PROVIDER'] = providerName;
-    resolveAppUrls();  // Re-resolve URLs for each provider (webfuse needs public tunnel URLs)
     if (providerName === 'webfuse' || providerName === 'webfuse-mcp') {
       process.env['SHOP_URL'] = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
     } else {
+      // Reset SHOP_URL to default so getSiteConfig() returns localhost URLs for direct/browser-use
+      delete process.env['SHOP_URL'];
       if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl as string;
     }
+    resolveAppUrls();  // Re-resolve URLs AFTER setting SHOP_URL and AUTOMATION_PROVIDER
+
+    // Rebuild journeys with provider-specific URLs (Webfuse needs public tunnel URLs)
+    const providerJourneys = buildJourneys(journeyIds);
+    const providerConfig = getSiteConfig();
 
     let provider;
     try {
@@ -218,10 +242,10 @@ async function runComparison(
           provider: displayName,
           site: options.site as string,
           targetUrl: '',
-          totalJourneys: journeys.length,
+          totalJourneys: providerJourneys.length,
           passed: 0,
-          failed: journeys.length,
-          journeys: journeys.map(j => ({
+          failed: providerJourneys.length,
+          journeys: providerJourneys.map(j => ({
             journeyId: j.id,
             journeyName: j.name,
             status: 'error' as const,
@@ -242,8 +266,8 @@ async function runComparison(
     console.log(`--- Provider: ${providerName} ---`);
     const runner = new BenchmarkRunner({
       provider,
-      journeys,
-      baseUrl: config.baseUrl,
+      journeys: providerJourneys,
+      baseUrl: providerConfig.baseUrl,
       site: options.site as string,
     });
 
