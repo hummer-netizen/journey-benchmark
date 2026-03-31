@@ -6,6 +6,10 @@ reports/*.md
 !reports/example-direct-run.md
 !reports/example-webfuse-run.json
 !reports/example-webfuse-run.md
+!reports/sprint-3-comparison.md
+!reports/sprint-3-comparison.json
+!reports/sprint-4-comparison.md
+!reports/flakiness-sprint-4.md
 *.db
 .env
 .env.local
