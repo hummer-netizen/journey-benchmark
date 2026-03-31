@@ -58,6 +58,7 @@ export class J14ProductComparison extends BaseJourney {
     return [
       {
         name: 'Search for products',
+        goal: "Navigate to the shop homepage, search for 'lamp', and verify at least 2 product results are shown.",
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
@@ -79,6 +80,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Open first product and record details',
+        goal: 'Click on the first product in the search results and note its name and price.',
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error(`Need at least 2 products, found ${links.length}`);
@@ -93,6 +95,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Return to product listing',
+        goal: 'Navigate back to the search results page showing the list of products.',
         execute: async (page: Page) => {
           // Use goto instead of goBack — goBack is unreliable in proxy frames (Surfly)
           await page.goto(this.searchResultsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -101,6 +104,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Open second product and record details',
+        goal: 'Click on the second product in the search results and note its name and price.',
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error('Second product not found in listing');
@@ -115,6 +119,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Compare products and identify cheaper',
+        goal: 'Compare the prices of the two recorded products and identify which one is cheaper. No browser interaction needed.',
         execute: async (_page: Page) => {
           if (this.products.length < 2) throw new Error('Fewer than 2 products recorded');
           const [p1, p2] = this.products as [ProductInfo, ProductInfo];
@@ -128,6 +133,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Navigate to cheaper product',
+        goal: 'Return to the search results and click on the cheaper of the two products.',
         execute: async (page: Page) => {
           const [p1, p2] = this.products as [ProductInfo, ProductInfo];
           const cheaperIndex = p1.price <= p2.price ? 0 : 1;
@@ -146,6 +152,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Add cheaper product to cart',
+        goal: 'Select any required product options (size/color) if present, then click Add to Cart.',
         execute: async (page: Page) => {
           if (isMagento) {
             // Handle swatch-style configurable options
@@ -184,6 +191,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Verify cart contains selected product',
+        goal: 'Navigate to the shopping cart and verify it contains at least one item.',
         execute: async (page: Page) => {
           const cartUrl = isMagento ? `${baseUrl}/checkout/cart/` : `${baseUrl}/cart`;
           await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });

@@ -77,7 +77,14 @@ export interface RunResult {
 /** A single journey step definition */
 export interface JourneyStep {
   name: string;
+  /** Natural-language goal for LLM-driven automation (Track C / WebfuseMcpProvider) */
+  goal?: string;
   execute(page: Page): Promise<void>;
+}
+
+/** Provider that can execute journey steps from a natural-language goal (Track C) */
+export interface GoalAwareProvider {
+  executeGoal(page: Page, goal: string): Promise<void>;
 }
 
 /** Journey interface that all journey implementations must satisfy */
@@ -85,5 +92,9 @@ export interface Journey {
   id: string;
   name: string;
   steps: JourneyStep[];
-  execute(page: Page, collector: import('./metrics/collector.js').MetricCollector): Promise<JourneyResult>;
+  execute(
+    page: Page,
+    collector: import('./metrics/collector.js').MetricCollector,
+    provider?: import('./webfuse/provider.js').AutomationProvider,
+  ): Promise<JourneyResult>;
 }

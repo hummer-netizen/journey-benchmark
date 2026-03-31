@@ -75,7 +75,7 @@ export class BenchmarkRunner {
             await startTrace(page.context(), traceConfig).catch(() => {});
           }
           const collector = new MetricCollector();
-          result = await journey.execute(page, collector);
+          result = await journey.execute(page, collector, this.options.provider);
           if (traceConfig?.enabled) {
             const tracePath = await stopTrace(page.context(), journey.id, traceConfig).catch(() => null);
             if (tracePath) console.log(`  Trace: ${tracePath}`);

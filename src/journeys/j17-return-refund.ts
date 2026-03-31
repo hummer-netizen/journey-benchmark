@@ -23,6 +23,7 @@ export class J17ReturnRefund extends BaseJourney {
     return [
       {
         name: 'Navigate to return portal',
+        goal: 'Navigate to the return portal homepage, which should redirect to the login page.',
         execute: async (page: Page) => {
           await page.goto(RETURN_PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
           // Should redirect to login
@@ -31,6 +32,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Login with pre-seeded user',
+        goal: "Fill in email='alice@example.com' and password='password123', then click the Login button.",
         execute: async (page: Page) => {
           await page.fill('#email', 'alice@example.com');
           await page.fill('#password', 'password123');
@@ -40,6 +42,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'View order history',
+        goal: 'Verify the order history page is loaded and shows order cards.',
         execute: async (page: Page) => {
           // Verify order history loaded
           const cards = await page.$$('.order-card');
@@ -48,6 +51,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Select eligible order for return',
+        goal: 'Find and click the return button for order ORD-10021 to open the return form.',
         execute: async (page: Page) => {
           // Click return on the eligible order (ORD-10021)
           const returnBtn = await page.$(`#return-btn-${this.returnOrderId}`);
@@ -58,6 +62,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Fill return reason and refund method',
+        goal: "Select return_reason='defective', fill return_notes='The product stopped working after 3 days.', and select return_method='original'.",
         execute: async (page: Page) => {
           await page.selectOption('#return_reason', 'defective');
           await page.fill('#return_notes', 'The product stopped working after 3 days.');
@@ -66,6 +71,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Submit return request and check eligibility',
+        goal: 'Click the Check Eligibility button and verify the order is approved for return (not shown as ineligible).',
         execute: async (page: Page) => {
           await page.click('#check-eligibility-btn');
           // Should redirect to eligible page since ORD-10021 is eligible
@@ -79,6 +85,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Verify return label is generated',
+        goal: "Verify a return label is shown with a reference number starting with 'RTN-'.",
         execute: async (page: Page) => {
           await page.waitForSelector('#return-label', { timeout: 10000 });
           const label = await page.textContent('#return-label');
@@ -87,6 +94,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Confirm return shipment',
+        goal: 'Click the Confirm Return button to finalize the return shipment.',
         execute: async (page: Page) => {
           await page.click('#confirm-return-btn');
           await page.waitForSelector('#return-confirmed', { timeout: 10000 });
@@ -94,6 +102,7 @@ export class J17ReturnRefund extends BaseJourney {
       },
       {
         name: 'Verify confirmation number',
+        goal: "Verify the final confirmation number is displayed and starts with 'CONF-'.",
         execute: async (page: Page) => {
           const confirmRef = await page.textContent('#confirmation-number');
           if (!confirmRef?.startsWith('CONF-')) {

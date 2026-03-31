@@ -1,6 +1,12 @@
 import type { Page } from 'playwright';
-import type { Journey, JourneyResult, JourneyStep, SiteConfig } from '../types.js';
+import type { Journey, JourneyResult, JourneyStep, SiteConfig, GoalAwareProvider } from '../types.js';
 import type { MetricCollector } from '../metrics/collector.js';
+import type { AutomationProvider } from '../webfuse/provider.js';
+
+/** Type guard — returns true if the provider implements GoalAwareProvider */
+function isGoalAware(provider: AutomationProvider): provider is AutomationProvider & GoalAwareProvider {
+  return typeof (provider as unknown as GoalAwareProvider).executeGoal === 'function';
+}
 
 /** Base class with shared execution logic for all journeys */
 export abstract class BaseJourney implements Journey {
@@ -14,7 +20,11 @@ export abstract class BaseJourney implements Journey {
     this.config = config;
   }
 
-  async execute(page: Page, collector: MetricCollector): Promise<JourneyResult> {
+  async execute(
+    page: Page,
+    collector: MetricCollector,
+    provider?: AutomationProvider,
+  ): Promise<JourneyResult> {
     collector.reset();
     const startedAt = new Date().toISOString();
     const journeyStart = Date.now();
@@ -24,7 +34,14 @@ export abstract class BaseJourney implements Journey {
     for (let i = 0; i < this.steps.length; i++) {
       const step = this.steps[i];
       if (!step) continue;
-      const result = await collector.measure(i, step.name, () => step.execute(page));
+
+      // Use the LLM agent when the provider is goal-aware and the step has a goal (Track C)
+      const useAgent = provider && isGoalAware(provider) && step.goal;
+      const executor = useAgent
+        ? () => (provider as AutomationProvider & GoalAwareProvider).executeGoal(page, step.goal!)
+        : () => step.execute(page);
+
+      const result = await collector.measure(i, step.name, executor);
       if (result.status === 'failed') {
         status = 'failed';
         errorMessage = result.errorMessage;

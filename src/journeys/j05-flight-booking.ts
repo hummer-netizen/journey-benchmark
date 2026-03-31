@@ -26,6 +26,7 @@ export class J05FlightBooking extends BaseJourney {
     return [
       {
         name: 'Navigate to flight app homepage',
+        goal: 'Navigate to the flight booking app homepage and wait for the search form to load.',
         execute: async (page: Page) => {
           await page.goto(FLIGHT_APP_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector('form', { timeout: 10000 });
@@ -33,18 +34,21 @@ export class J05FlightBooking extends BaseJourney {
       },
       {
         name: 'Select origin airport',
+        goal: "Select 'JFK' as the departure airport in the origin/from dropdown.",
         execute: async (page: Page) => {
           await page.selectOption('select[name="from"]', 'JFK');
         },
       },
       {
         name: 'Select destination airport',
+        goal: "Select 'LAX' as the destination airport in the destination/to dropdown.",
         execute: async (page: Page) => {
           await page.selectOption('select[name="to"]', 'LAX');
         },
       },
       {
         name: 'Select departure date and search',
+        goal: "Fill in tomorrow's date in the departure date field and click the Search button to find available flights.",
         execute: async (page: Page) => {
           const today = new Date();
           today.setDate(today.getDate() + 1);
@@ -56,6 +60,7 @@ export class J05FlightBooking extends BaseJourney {
       },
       {
         name: 'Select a flight from results',
+        goal: 'Click on the first available flight card to select it and proceed to the booking form.',
         execute: async (page: Page) => {
           const flightCard = page.locator('.flight-card').first();
           await flightCard.waitFor({ timeout: 10000 });
@@ -71,6 +76,7 @@ export class J05FlightBooking extends BaseJourney {
       },
       {
         name: 'Fill passenger details',
+        goal: "Fill in: passenger_name='Test Passenger', passenger_email='passenger@test.com', and select 'Economy' for seat class.",
         execute: async (page: Page) => {
           await page.waitForSelector('input[name="passenger_name"]', { timeout: 10000 });
           await page.fill('input[name="passenger_name"]', 'Test Passenger');
@@ -80,6 +86,7 @@ export class J05FlightBooking extends BaseJourney {
       },
       {
         name: 'Confirm booking',
+        goal: 'Click the Confirm Booking button and wait for the confirmation page to load.',
         execute: async (page: Page) => {
           await page.click('#confirm-booking-btn');
           await page.waitForURL(/\/confirmation\//, { timeout: 15000 });
@@ -90,6 +97,7 @@ export class J05FlightBooking extends BaseJourney {
       },
       {
         name: 'Verify booking confirmation',
+        goal: "Verify the booking confirmation page shows a reference number starting with 'SKY' and a 'Booking Confirmed' message.",
         execute: async (page: Page) => {
           await page.waitForSelector('#booking-ref', { timeout: 10000 });
           const ref = await page.$eval('#booking-ref', (el) => el.textContent?.trim() ?? '');
