@@ -207,8 +207,8 @@ async function runComparison(
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.warn(`Skipping ${providerName}: ${errMsg}`);
-      // For webfuse providers with PENDING_CREDENTIAL, include a placeholder result
-      if ((providerName === 'webfuse' || providerName === 'webfuse-mcp') && errMsg.includes('PENDING_CREDENTIAL')) {
+      // For webfuse providers missing credentials, include a placeholder result
+      if ((providerName === 'webfuse' || providerName === 'webfuse-mcp') && (errMsg.includes('PENDING_CREDENTIAL') || errMsg.includes('WEBFUSE_AUTOMATION_KEY is not set'))) {
         const now = new Date().toISOString();
         const displayName = providerName === 'webfuse' ? 'WebfuseProvider' : 'WebfuseMcpProvider';
         pendingCredentialProviders.push(displayName);
@@ -267,7 +267,7 @@ async function runComparison(
   // Append PENDING_CREDENTIAL note to markdown if any webfuse providers were skipped
   if (pendingCredentialProviders.length > 0) {
     const fs = await import('fs');
-    const note = `\n---\n\n**Note:** ${pendingCredentialProviders.join(', ')} (Track C): PENDING_CREDENTIAL — WEBFUSE_SESSION_ID not set on dev machine. Re-run required once an active Webfuse session ID is provisioned.\n`;
+    const note = `\n---\n\n**Note:** ${pendingCredentialProviders.join(', ')} (Track C): PENDING_CREDENTIAL — WEBFUSE_AUTOMATION_KEY not set on dev machine. Re-run required once a Space Automation API key is provisioned.\n`;
     fs.appendFileSync(markdown, note, 'utf-8');
   }
 

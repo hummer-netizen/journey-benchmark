@@ -7,45 +7,92 @@ import { AutomationApi } from './automation-api.js';
  * WebfuseProvider — drives browser automation via the Webfuse Session MCP Server.
  *
  * All perception (domSnapshot, accessibilityTree) and actuation (click, type, etc.)
- * go through the Automation API. No Chromium is launched.
+ * go through the Automation API. No local Chromium is used for actuation — a headless
+ * browser is launched solely to act as the "tab owner" for the Webfuse session.
+ *
+ * Session lifecycle (per journey run):
+ *   1. POST to WEBFUSE_SPACE_URL → get session_id + link
+ *   2. Launch headless Chromium, navigate to session link (establishes tab owner)
+ *   3. Wait for session tab to be ready
+ *   4. Navigate to the target journey URL via MCP navigate tool
+ *   5. Run journey steps via MCP (click, type, domSnapshot, etc.)
+ *   6. On close(): terminate session via DELETE REST API, close browser
  *
  * Env vars:
- *   WEBFUSE_API_KEY      — ak_* key for the MCP server (required)
- *   WEBFUSE_MCP_ENDPOINT — MCP server URL (default: https://session-mcp.webfu.se/mcp)
- *   WEBFUSE_SESSION_ID   — existing session ID (required — no REST session creation)
+ *   WEBFUSE_AUTOMATION_KEY — ak_* Space Automation API key (required)
+ *   WEBFUSE_SPACE_URL      — Space URL to create sessions (default: https://webfu.se/+webfuse-mcp-demo/)
+ *   WEBFUSE_MCP_ENDPOINT   — MCP server URL (default: https://session-mcp.webfu.se/mcp)
  */
 export class WebfuseProvider implements AutomationProvider {
   private readonly apiKey: string;
+  private readonly spaceUrl: string;
   private readonly mcpEndpoint: string;
   private _automationApi: AutomationApi | null = null;
   private _activeSessionId: string | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _browser: any | null = null;
 
   constructor(_headless = true) {
-    const apiKey = process.env['WEBFUSE_API_KEY'];
-    if (!apiKey) throw new Error('WEBFUSE_API_KEY is not set — cannot use WebfuseProvider');
-    const sessionId = process.env['WEBFUSE_SESSION_ID'];
-    if (!sessionId) throw new Error('WEBFUSE_SESSION_ID is not set — Track C results marked PENDING_CREDENTIAL');
+    const apiKey = process.env['WEBFUSE_AUTOMATION_KEY'];
+    if (!apiKey) throw new Error('WEBFUSE_AUTOMATION_KEY is not set — cannot use WebfuseProvider (Track C)');
     this.apiKey = apiKey;
+    this.spaceUrl = process.env['WEBFUSE_SPACE_URL'] ?? 'https://webfu.se/+webfuse-mcp-demo/';
     this.mcpEndpoint = process.env['WEBFUSE_MCP_ENDPOINT'] ?? 'https://session-mcp.webfu.se/mcp';
   }
 
-  private getApi(): AutomationApi {
+  private getApi(sessionId: string): AutomationApi {
     if (!this._automationApi) {
       this._automationApi = new AutomationApi({
         apiKey: this.apiKey,
         mcpEndpoint: this.mcpEndpoint,
       });
     }
+    // Bind sessionId into the api instance for this run
+    this._activeSessionId = sessionId;
     return this._automationApi;
   }
 
-  private resolveSessionId(): string {
-    const envSessionId = process.env['WEBFUSE_SESSION_ID'];
-    if (envSessionId) {
-      console.log(`  [Webfuse] Using session: ${envSessionId}`);
-      return envSessionId;
-    }
-    throw new Error('WEBFUSE_SESSION_ID is not set — Track C results marked PENDING_CREDENTIAL');
+  /** Create a Webfuse session by POSTing to the space URL. Returns {session_id, link}. */
+  private async createSession(): Promise<{ session_id: string; link: string }> {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(this.spaceUrl);
+      const reqOptions: https.RequestOptions = {
+        hostname: parsed.hostname,
+        port: 443,
+        path: parsed.pathname,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': 0 },
+      };
+      const req = https.request(reqOptions, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data) as { session_id: string; link: string };
+            resolve(parsed);
+          } catch {
+            reject(new Error(`Failed to parse session creation response: ${data.slice(0, 200)}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(10000, () => { req.destroy(); reject(new Error('Session creation timed out')); });
+      req.end();
+    });
+  }
+
+  /** Launch headless Chromium and navigate to the session link to become the tab owner. */
+  private async openSessionInBrowser(sessionLink: string): Promise<void> {
+    // Dynamic require to avoid bundling issues
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pw = require('/home/deploy/projects/journey-benchmark/node_modules/playwright') as typeof import('playwright');
+    this._browser = await pw.chromium.launch({ headless: true, executablePath: '/usr/bin/chromium' });
+    const page = await this._browser.newPage();
+    await page.goto(sessionLink, { waitUntil: 'load', timeout: 20000 });
+    console.log(`  [Webfuse] Tab owner browser at: ${page.url()}`);
+    // Wait for session to initialize and register the tab
+    await new Promise(r => setTimeout(r, 8000));
+    console.log(`  [Webfuse] Session tab ready`);
   }
 
   /** Terminate a session via DELETE /api/v2/sessions/{id}/ — best-effort, never throws */
@@ -56,12 +103,10 @@ export class WebfuseProvider implements AutomationProvider {
         port: 443,
         path: `/api/v2/sessions/${id}/`,
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
+        headers: { Authorization: `Bearer ${this.apiKey}` },
       };
       const req = https.request(reqOptions, (res) => {
-        res.resume(); // drain response body
+        res.resume();
         res.on('end', () => resolve());
       });
       req.on('error', (err) => {
@@ -78,22 +123,39 @@ export class WebfuseProvider implements AutomationProvider {
   }
 
   async openUrl(url: string): Promise<Page> {
-    const api = this.getApi();
-    const sessionId = this.resolveSessionId();
-    this._activeSessionId = sessionId;
+    // Step 1: Create a fresh Webfuse session
+    console.log(`  [Webfuse] Creating session on space: ${this.spaceUrl}`);
+    const { session_id, link } = await this.createSession();
+    console.log(`  [Webfuse] Session created: ${session_id}`);
+    this._activeSessionId = session_id;
 
-    console.log(`  [Webfuse] Navigating to: ${url}`);
-    await api.navigate(sessionId, url);
+    // Step 2: Open session in headless browser (establishes tab owner)
+    await this.openSessionInBrowser(link);
 
-    // Tab activation: call page_info as tab focus probe, prime URL cache
-    let initialUrl = url;
+    // Step 3: Get automation API and verify tab is active
+    const api = this.getApi(session_id);
+
+    // Step 4: Tab activation — verify active tab via page_info before navigating
     try {
-      const info = await api.pageInfo(sessionId);
-      if (info.url) initialUrl = info.url;
-      console.log(`  [Webfuse] Tab activated for session: ${sessionId}`);
+      const info = await api.pageInfo(session_id);
+      console.log(`  [Webfuse] Tab activated. Current URL: ${info.url}`);
+    } catch (e) {
+      console.warn(`  [Webfuse] Tab activation check failed: ${e instanceof Error ? e.message : e}`);
+    }
+
+    // Step 5: Navigate to the target URL
+    console.log(`  [Webfuse] Navigating to: ${url}`);
+    await api.navigate(session_id, url);
+
+    // Verify navigation
+    let confirmedUrl = url;
+    try {
+      const info = await api.pageInfo(session_id);
+      if (info.url) confirmedUrl = info.url;
+      console.log(`  [Webfuse] Navigated to: ${confirmedUrl}`);
     } catch { /* use requested URL */ }
 
-    return this.createPageProxy(api, sessionId, initialUrl) as unknown as Page;
+    return this.createPageProxy(api, session_id, confirmedUrl) as unknown as Page;
   }
 
   private createPageProxy(api: AutomationApi, sessionId: string, initialUrl = ''): object {
@@ -110,7 +172,6 @@ export class WebfuseProvider implements AutomationProvider {
       }
     };
 
-    // Minimal fake ElementHandle for selectors returned by $ / $$
     const makeHandle = (selector: string) => ({
       click: () => api.click(sessionId, selector),
       fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
@@ -132,7 +193,6 @@ export class WebfuseProvider implements AutomationProvider {
     });
 
     const proxy: Record<string, unknown> = {
-      // --- Navigation ---
       goto: async (targetUrl: string, _options?: Record<string, unknown>) => {
         if (cachedUrl) urlHistory.push(cachedUrl);
         console.log(`  [Webfuse/nav] goto: ${targetUrl}`);
@@ -152,35 +212,24 @@ export class WebfuseProvider implements AutomationProvider {
       },
 
       url: () => cachedUrl,
-
-      title: async () => {
-        const info = await api.pageInfo(sessionId);
-        return info.title;
-      },
-
+      title: async () => { const info = await api.pageInfo(sessionId); return info.title; },
       content: () => api.domSnapshot(sessionId, { webfuseIDs: true }),
-
       screenshot: (_options?: Record<string, unknown>) => api.guiSnapshot(sessionId),
 
-      // --- Actions ---
       click: async (selector: string, _options?: Record<string, unknown>) => {
         await api.click(sessionId, selector);
         await sleep(300);
       },
-
       fill: async (selector: string, value: string, _options?: Record<string, unknown>) => {
         await api.type(sessionId, selector, value, { overwrite: true });
       },
-
       type: async (selector: string, text: string, _options?: Record<string, unknown>) => {
         await api.type(sessionId, selector, text, { overwrite: false });
       },
-
       press: async (selector: string, key: string, _options?: Record<string, unknown>) => {
         await api.keyPress(sessionId, selector, key);
         await sleep(300);
       },
-
       selectOption: async (selector: string, values: unknown, _options?: Record<string, unknown>) => {
         const value = Array.isArray(values)
           ? (typeof values[0] === 'object' && values[0] !== null && 'label' in (values[0] as object)
@@ -192,68 +241,38 @@ export class WebfuseProvider implements AutomationProvider {
         await api.select(sessionId, selector, value);
         return [];
       },
-
-      check: async (selector: string, _options?: Record<string, unknown>) => {
-        await api.click(sessionId, selector);
-      },
-
-      uncheck: async (selector: string, _options?: Record<string, unknown>) => {
-        await api.click(sessionId, selector);
-      },
-
-      dispatchEvent: async (selector: string, type: string, _eventInit?: Record<string, unknown>) => {
+      check: async (selector: string) => { await api.click(sessionId, selector); },
+      uncheck: async (selector: string) => { await api.click(sessionId, selector); },
+      dispatchEvent: async (selector: string, type: string) => {
         if (type === 'click') await api.click(sessionId, selector);
       },
 
-      // --- DOM queries ---
       $: async (selector: string) => {
         const html = await api.domSnapshot(sessionId);
         return selectorIn(html, selector) ? makeHandle(selector) : null;
       },
-
       $$: async (selector: string) => {
         const html = await api.domSnapshot(sessionId);
         const count = countIn(html, selector);
-        return Array.from({ length: count }, (_, i) =>
-          makeHandle(`${selector}:nth-of-type(${i + 1})`)
-        );
+        return Array.from({ length: count }, (_, i) => makeHandle(`${selector}:nth-of-type(${i + 1})`));
       },
-
       $eval: async (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
         void fn; void args;
-        const html = await api.domSnapshot(sessionId);
-        return extractText(html, selector);
+        return extractText(await api.domSnapshot(sessionId), selector);
       },
-
       $$eval: async (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
         void fn; void args;
-        const html = await api.domSnapshot(sessionId);
-        return [extractText(html, selector)];
+        return [extractText(await api.domSnapshot(sessionId), selector)];
       },
 
-      // --- State inspection ---
-      isVisible: async (selector: string, _options?: Record<string, unknown>) => {
-        const html = await api.domSnapshot(sessionId);
-        return selectorIn(html, selector);
-      },
-
-      isChecked: async (selector: string, _options?: Record<string, unknown>) => {
+      isVisible: async (selector: string) => selectorIn(await api.domSnapshot(sessionId), selector),
+      isChecked: async (selector: string) => {
         const html = await api.domSnapshot(sessionId);
         return selectorIn(html, selector) && html.includes('checked');
       },
+      textContent: async (selector: string) => extractText(await api.domSnapshot(sessionId), selector),
+      evaluate: async (fn: unknown, ...args: unknown[]) => { void fn; void args; return api.domSnapshot(sessionId); },
 
-      textContent: async (selector: string, _options?: Record<string, unknown>) => {
-        const html = await api.domSnapshot(sessionId);
-        return extractText(html, selector);
-      },
-
-      // --- Evaluate (best-effort: returns domSnapshot HTML) ---
-      evaluate: async (fn: ((...args: unknown[]) => unknown) | string, ...args: unknown[]) => {
-        void fn; void args;
-        return api.domSnapshot(sessionId);
-      },
-
-      // --- Wait helpers ---
       waitForSelector: async (selector: string, options?: Record<string, unknown>) => {
         const timeout = (options?.['timeout'] as number | undefined) ?? 30000;
         const deadline = Date.now() + timeout;
@@ -266,7 +285,6 @@ export class WebfuseProvider implements AutomationProvider {
         }
         throw new Error(`Timeout waiting for selector: ${selector}`);
       },
-
       waitForURL: async (pattern: string | RegExp, options?: Record<string, unknown>) => {
         const timeout = (options?.['timeout'] as number | undefined) ?? 30000;
         const deadline = Date.now() + timeout;
@@ -277,36 +295,15 @@ export class WebfuseProvider implements AutomationProvider {
           await sleep(500);
         }
       },
-
-      waitForLoadState: async (_state?: string, _options?: Record<string, unknown>) => {
-        await api.wait(sessionId).catch(() => {});
-      },
-
+      waitForLoadState: async (_state?: string) => { await api.wait(sessionId).catch(() => {}); },
       waitForTimeout: (ms: number) => sleep(ms),
+      waitForFunction: async (_fn: unknown, ..._args: unknown[]) => { await sleep(2000); return null; },
 
-      waitForFunction: async (_fn: unknown, ..._args: unknown[]) => {
-        await sleep(2000);
-        return null;
-      },
-
-      // --- Locator (facade over click/fill) ---
       locator: (selector: string, _options?: Record<string, unknown>) => ({
-        click: (opts?: Record<string, unknown>) => {
-          void opts;
-          return api.click(sessionId, selector);
-        },
-        fill: (value: string, opts?: Record<string, unknown>) => {
-          void opts;
-          return api.type(sessionId, selector, value, { overwrite: true });
-        },
-        type: (text: string, opts?: Record<string, unknown>) => {
-          void opts;
-          return api.type(sessionId, selector, text);
-        },
-        press: (key: string, opts?: Record<string, unknown>) => {
-          void opts;
-          return api.keyPress(sessionId, selector, key);
-        },
+        click: () => api.click(sessionId, selector),
+        fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
+        type: (text: string) => api.type(sessionId, selector, text),
+        press: (key: string) => api.keyPress(sessionId, selector, key),
         first: () => ({
           click: () => api.click(sessionId, selector),
           fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
@@ -315,8 +312,8 @@ export class WebfuseProvider implements AutomationProvider {
           click: () => api.click(sessionId, selector),
           fill: (value: string) => api.type(sessionId, selector, value, { overwrite: true }),
         }),
-        waitFor: async (_options?: Record<string, unknown>) => {
-          const timeout = (_options?.['timeout'] as number | undefined) ?? 30000;
+        waitFor: async (options?: Record<string, unknown>) => {
+          const timeout = (options?.['timeout'] as number | undefined) ?? 30000;
           const deadline = Date.now() + timeout;
           while (Date.now() < deadline) {
             const html = await api.domSnapshot(sessionId);
@@ -324,36 +321,30 @@ export class WebfuseProvider implements AutomationProvider {
             await sleep(1000);
           }
         },
-        isVisible: async () => {
-          const html = await api.domSnapshot(sessionId);
-          return selectorIn(html, selector);
-        },
+        isVisible: async () => selectorIn(await api.domSnapshot(sessionId), selector),
       }),
 
-      // --- Context stub (used by some journeys) ---
-      context: () => ({
-        newPage: async () => proxy,
-        close: async () => {},
-      }),
+      context: () => ({ newPage: async () => proxy, close: async () => {} }),
     };
 
     return proxy;
   }
 
-  /** Return the automation API instance (for agent integration) */
-  getAutomationApi(): AutomationApi | null {
-    return this._automationApi;
-  }
-
-  /** Return the active session ID */
-  getActiveSessionId(): string | null {
-    return this._activeSessionId;
-  }
+  getAutomationApi(): AutomationApi | null { return this._automationApi; }
+  getActiveSessionId(): string | null { return this._activeSessionId; }
 
   async close(): Promise<void> {
+    // Step 1: Terminate Webfuse session (best-effort)
     if (this._activeSessionId) {
+      console.log(`  [Webfuse] Terminating session: ${this._activeSessionId}`);
       await this.terminateSession(this._activeSessionId);
     }
+    // Step 2: Close headless browser
+    if (this._browser) {
+      try { await this._browser.close(); } catch { /* ignore */ }
+      this._browser = null;
+    }
+    // Step 3: Log audit summary
     if (this._automationApi) {
       const log = this._automationApi.auditLog;
       if (log.length > 0) {
@@ -374,19 +365,14 @@ function sleep(ms: number): Promise<void> {
 }
 
 function selectorIn(html: string, selector: string): boolean {
-  // #id
   const idM = selector.match(/^#([\w-]+)/);
   if (idM) return html.includes(`id="${idM[1]}"`);
-  // .class
   const clsM = selector.match(/^\.([\w-]+)/);
   if (clsM) return html.toLowerCase().includes('class=') && html.includes(clsM[1]!);
-  // [attr="val"]
   const attrM = selector.match(/\[([^\]="]+)="([^"]+)"\]/);
   if (attrM) return html.includes(`${attrM[1]}="${attrM[2]}"`);
-  // [attr]
   const attrOnlyM = selector.match(/\[([^\]="]+)\]/);
   if (attrOnlyM) return html.includes(`${attrOnlyM[1]}=`);
-  // tag
   const tagM = selector.match(/^([\w-]+)/);
   if (tagM) return html.toLowerCase().includes(`<${tagM[1]!.toLowerCase()}`);
   return html.includes(selector);
