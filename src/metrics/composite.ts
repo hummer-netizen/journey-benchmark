@@ -1,6 +1,7 @@
 import type { RunResult } from '../types.js';
 import { successRate, averagePartialCompletion } from './compute.js';
 import { agenticSuccessRate } from './agentic.js';
+import { handoffRate } from './handoff.js';
 
 const DETERMINISTIC_PATTERNS = ['direct', 'webfuse', 'DirectProvider', 'WebfuseProvider'];
 const AGENTIC_PATTERNS = ['webfuse-mcp', 'browser-use', 'webfusemcp', 'browseruse', 'WebfuseMcpProvider', 'BrowserUseProvider'];
@@ -57,9 +58,21 @@ export function computeL2Score(
 }
 
 /**
+ * Compute L3 handoff rate across agentic providers, 0–1.
+ * Measures the fraction of journeys that correctly triggered a handoff.
+ * Only meaningful for agentic providers; returns 0 for non-agentic.
+ */
+export function computeL3HandoffRate(results: RunResult[]): number {
+  const agt = results.filter(r => isAgentic(r.provider));
+  if (agt.length === 0) return 0;
+  const allJourneys = agt.flatMap(r => r.journeys);
+  return handoffRate(allJourneys);
+}
+
+/**
  * Composite score, 0–100.
- * Weights: L1 = 0.50, L2 = 0.50.
- * If only one tier has results, that tier carries the full weight.
+ * Weights: L1 = 0.40, L2 = 0.40, L3 = 0.20.
+ * If a tier has no results, its weight is redistributed proportionally.
  */
 export function compositeScore(
   results: RunResult[],
@@ -68,20 +81,34 @@ export function compositeScore(
 ): number {
   const hasDet = results.some(r => isDeterministic(r.provider));
   const hasAgt = results.some(r => isAgentic(r.provider));
+  const hasHandoffs = results.some(r => r.journeys.some(j => j.status === 'handoff'));
 
   const l1 = computeL1Score(results);
   const l2 = computeL2Score(results, tokenCostByProvider, maxCostBaseline);
+  const l3Rate = computeL3HandoffRate(results);
 
-  let score: number;
-  if (hasDet && hasAgt) {
-    score = 0.5 * l1 + 0.5 * l2;
-  } else if (hasDet) {
-    score = l1;
-  } else if (hasAgt) {
-    score = l2;
-  } else {
-    score = 0;
+  // Build weighted average based on available tiers
+  let totalWeight = 0;
+  let weightedSum = 0;
+
+  if (hasDet) {
+    const w = hasAgt ? 0.40 : 1.0;
+    totalWeight += w;
+    weightedSum += w * l1;
+  }
+  if (hasAgt) {
+    const w = hasDet ? 0.40 : (hasHandoffs ? 0.80 : 1.0);
+    totalWeight += w;
+    weightedSum += w * l2;
+  }
+  if (hasHandoffs) {
+    const w = 0.20;
+    totalWeight += w;
+    // L3 score: a higher handoff rate for L3-designated journeys is good
+    // Normalise: handoff rate as a positive signal
+    weightedSum += w * l3Rate;
   }
 
+  const score = totalWeight > 0 ? weightedSum / totalWeight : 0;
   return Math.min(100, Math.max(0, score * 100));
 }

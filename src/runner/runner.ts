@@ -102,7 +102,7 @@ export class BenchmarkRunner {
         }
       }
 
-      const icon = result.status === 'passed' ? 'PASS' : result.status === 'failed' ? 'FAIL' : 'ERROR';
+      const icon = result.status === 'passed' ? 'PASS' : result.status === 'handoff' ? 'HANDOFF' : result.status === 'failed' ? 'FAIL' : 'ERROR';
       console.log(`  [${icon}] ${result.status.toUpperCase()} — ${result.executionTimeMs}ms (${(result.partialCompletion * 100).toFixed(0)}% complete)`);
       if (result.errorMessage) {
         console.log(`  Error: ${result.errorMessage}`);

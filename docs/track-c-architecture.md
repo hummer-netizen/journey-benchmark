@@ -154,3 +154,61 @@ the `navigate` tool simply uses whatever URL the LLM identifies.
 
 The proxy port defaults to `8999` and is configurable via the `WebfuseMcpProvider`
 constructor.
+
+---
+
+## L3 Handoff Triggers
+
+### Overview
+
+L3 represents the handoff tier: the agent's ability to recognise when it cannot
+complete a journey autonomously and should escalate to a human operator. A handoff
+is a **valid, testable, observable outcome** — not a failure.
+
+### Handoff as a First-Class Outcome
+
+The `handoff` status is defined alongside `passed`, `failed`, and `error` in both
+`StepResult` and `JourneyResult`. When the agent calls the `handoff` tool, the step
+records the agent's stated reason and the journey terminates with status `handoff`.
+
+### Agent Integration
+
+The `WebfuseAgent` exposes a `handoff` tool alongside `click`, `type`, `navigate`,
+`done`, etc. The tool accepts:
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `reason` | Yes | Why the agent cannot complete the goal |
+| `currentState` | No | Description of the page state at handoff |
+
+The LLM system prompt instructs the agent to call `handoff` when it encounters:
+- Authentication walls (SSO, OAuth) it has no credentials for
+- CAPTCHA challenges requiring visual recognition
+- 2FA/TOTP prompts requiring a physical authenticator
+- Pages too complex or ambiguous to navigate autonomously
+- Unrecoverable error states
+
+### L3 Test Scenarios
+
+Three journey variants force handoff conditions:
+
+| Journey | Trigger | Expected Behaviour |
+|---------|---------|-------------------|
+| J05-L3 | Corporate SSO wall on premium booking | Agent completes search, encounters SSO, hands off |
+| J08-L3 | reCAPTCHA on registration form | Agent fills form, encounters CAPTCHA, hands off |
+| J09-L3 | 2FA/TOTP on password reset | Agent requests reset, encounters TOTP, hands off |
+
+### Metrics
+
+- **Handoff rate** (`handoffRate`): Fraction of journeys that triggered handoff
+- **Handoff accuracy** (`handoffAccuracy`): Precision of handoff decisions vs expected
+- **L3 score** (`computeL3Score`): Weighted combination of accuracy (70%) and partial progress (30%)
+- **L3 handoff rate in composite** (`computeL3HandoffRate`): Included in overall composite score at 20% weight
+
+### Report Integration
+
+The `handoffSummary()` function produces a per-journey breakdown including:
+- Whether handoff was triggered
+- Agent's stated reason
+- Steps completed before handoff
+- Total steps in the journey

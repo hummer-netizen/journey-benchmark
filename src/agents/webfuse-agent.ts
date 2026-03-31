@@ -1,5 +1,6 @@
 import * as http from 'node:http';
 import type { Page } from 'playwright';
+import type { GoalExecutionResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // OpenAI-compatible types (subset)
@@ -173,6 +174,21 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'handoff',
+      description: 'Signal that the goal cannot be completed autonomously and requires human intervention. Use when: the task is too complex or ambiguous, an authentication wall blocks progress, a CAPTCHA or 2FA challenge appears, external approval is needed, or the page state is unrecoverable.',
+      parameters: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', description: 'Why the agent cannot complete this goal autonomously' },
+          currentState: { type: 'string', description: 'Description of the current page/journey state at the point of handoff' },
+        },
+        required: ['reason'],
+      },
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -206,7 +222,7 @@ export class WebfuseAgent {
   }
 
   /** Execute a natural-language goal on the current page state */
-  async executeGoal(goal: string): Promise<void> {
+  async executeGoal(goal: string): Promise<GoalExecutionResult> {
     console.log(`  [Agent] Goal: ${goal}`);
 
     const axTree = await this.extractAXTree();
@@ -257,7 +273,7 @@ export class WebfuseAgent {
       // No tool calls — treat as done if LLM says so in content
       if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
         console.log(`  [Agent] No tool call returned — treating as done`);
-        return;
+        return { outcome: 'completed' };
       }
 
       const toolCall = assistantMessage.tool_calls[0]!;
@@ -279,7 +295,20 @@ export class WebfuseAgent {
           tool_call_id: toolCall.id,
           content: 'Goal completed.',
         });
-        return;
+        return { outcome: 'completed' };
+      }
+
+      if (toolName === 'handoff') {
+        const reason = toolArgs['reason'] as string;
+        const currentState = toolArgs['currentState'] as string | undefined;
+        console.log(`  [Agent] Handoff triggered: ${reason}`);
+        if (currentState) console.log(`  [Agent] State: ${currentState}`);
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: 'Handoff acknowledged. Human operator will take over.',
+        });
+        return { outcome: 'handoff', handoffReason: reason };
       }
 
       // Execute the tool
@@ -310,7 +339,11 @@ export class WebfuseAgent {
       });
     }
 
-    throw new Error(`Agent exceeded max iterations (${this.maxIterations}) for goal: ${goal}`);
+    // Max iterations reached — treat as handoff (agent couldn't complete autonomously)
+    return {
+      outcome: 'handoff',
+      handoffReason: `Agent exceeded max iterations (${this.maxIterations}) for goal: ${goal}`,
+    };
   }
 
   // ---------------------------------------------------------------------------

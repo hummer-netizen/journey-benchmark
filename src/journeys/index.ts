@@ -1,8 +1,11 @@
 export { J01ProductPurchase } from './j01-product-purchase.js';
 export { J04CartRecovery } from './j04-cart-recovery.js';
 export { J05FlightBooking } from './j05-flight-booking.js';
+export { J05FlightBookingL3 } from './j05-flight-booking-l3.js';
 export { J08AccountRegistration } from './j08-account-registration.js';
+export { J08AccountRegistrationL3 } from './j08-account-registration-l3.js';
 export { J09PasswordReset } from './j09-password-reset.js';
+export { J09PasswordResetL3 } from './j09-password-reset-l3.js';
 export { J14ProductComparison } from './j14-product-comparison.js';
 export { J12GovernmentForm } from './j12-government-form.js';
 export { J17ReturnRefund } from './j17-return-refund.js';
