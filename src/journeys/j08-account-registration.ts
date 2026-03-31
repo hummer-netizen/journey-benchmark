@@ -49,6 +49,8 @@ export class J08AccountRegistration extends BaseJourney {
       {
         name: 'Navigate to auth app homepage',
         execute: async (page: Page) => {
+          // Generate a fresh email for each run to avoid "already registered" collisions
+          this.testEmail = `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@example.com`;
           await page.goto(AUTH_APP_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector('a[href="/register"]', { timeout: 10000 });
         },
