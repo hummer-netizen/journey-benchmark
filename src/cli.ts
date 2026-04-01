@@ -16,6 +16,7 @@ import { J14ProductComparison } from './journeys/j14-product-comparison.js';
 import { J12GovernmentForm } from './journeys/j12-government-form.js';
 import { J17ReturnRefund } from './journeys/j17-return-refund.js';
 import { flakinessScore } from './metrics/index.js';
+import { generateRepros } from './repro/index.js';
 import type { Journey, JourneyResult } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,8 @@ program
   .option('--llm-proxy-port <port>', 'Port for the in-process LLM proxy (default: 8999)', '8999')
   .option('--flakiness-runs <n>', 'Run each journey N times and compute M4 flakiness score (default: 1)', '1')
   .option('--stakeholder', 'Generate stakeholder summary report after run', false)
+  .option('--repro', 'Generate standalone HTML repro cases for failed journeys', false)
+  .option('--repro-dir <dir>', 'Output directory for repro HTML files', path.join(__dirname, '..', 'repros'))
   // TODO: WebfuseProvider carry-over for S4.7 — requires WEBFUSE_API_KEY env var
   .action(async (options) => {
     process.env['AUTOMATION_PROVIDER'] = options.provider;
@@ -128,7 +131,26 @@ program
       console.log(`\nSaved to database (run #${dbRunId})`);
 
       const jsonPath = generateJsonReport(result, options.reports);
-      const mdPath = generateMarkdownReport(result, options.reports);
+
+      // --repro: generate standalone HTML repro cases for failed journeys
+      let reproFiles: import('./repro/index.js').ReproFile[] = [];
+      if (options.repro) {
+        const failedJourneys = result.journeys.filter(j => j.status !== 'passed');
+        if (failedJourneys.length > 0) {
+          reproFiles = generateRepros(selectedJourneys, result.journeys, {
+            outputDir: options.reproDir,
+            targetUrl: config.baseUrl,
+          });
+          if (reproFiles.length > 0) {
+            console.log(`\nRepro cases generated (${reproFiles.length}):`);
+            for (const repro of reproFiles) {
+              console.log(`   ${repro.journeyId}: ${repro.filePath}`);
+            }
+          }
+        }
+      }
+
+      const mdPath = generateMarkdownReport(result, options.reports, reproFiles.length > 0 ? reproFiles : undefined);
       console.log(`JSON report: ${jsonPath}`);
       console.log(`Markdown report: ${mdPath}`);
 
