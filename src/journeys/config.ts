@@ -133,6 +133,7 @@ const APP_URLS: Record<string, [string, string]> = {
   AUTH_APP_URL:      ['http://localhost:3334', 'https://auth-app.webfuse.it'],
   GOV_FORMS_URL:     ['http://localhost:3335', 'https://gov-forms.webfuse.it'],
   RETURN_PORTAL_URL: ['http://localhost:3336', 'https://return-portal.webfuse.it'],
+  GYM_URL:           ['http://localhost:3337', 'https://gym-diagnostic.webfuse.it'],
 };
 
 function resolveAppUrl(envVar: string): string {
@@ -163,3 +164,13 @@ export const FLIGHT_APP_CONFIG = { get baseUrl() { return FLIGHT_APP_URL; } };
 export const AUTH_APP_CONFIG = { get baseUrl() { return AUTH_APP_URL; } };
 export const GOV_FORMS_CONFIG = { get baseUrl() { return GOV_FORMS_URL; } };
 export const RETURN_PORTAL_CONFIG = { get baseUrl() { return RETURN_PORTAL_URL; } };
+
+/**
+ * Journey 0 — "The Gym" config.
+ * Resolves to local file:// or http URL for the static diagnostic page.
+ */
+export let GYM_URL = resolveAppUrl('GYM_URL');
+export function resolveGymUrl(): void {
+  GYM_URL = resolveAppUrl('GYM_URL');
+}
+export const GYM_CONFIG = { get baseUrl() { return GYM_URL; } };

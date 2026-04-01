@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journey 0 — The Gym</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: #f8f9fa;
+      color: #212529;
+    }
+    h1 { text-align: center; margin-bottom: 0.25rem; }
+    .subtitle { text-align: center; color: #6c757d; margin-bottom: 2rem; }
+    .component-card {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .component-card h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      color: #495057;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 0.5rem;
+    }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    input, select, textarea {
+      font-size: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      width: 100%;
+      max-width: 400px;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    select { cursor: pointer; }
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 1.25rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #0d6efd;
+      color: #fff;
+      margin-top: 0.5rem;
+    }
+    button:hover { background: #0b5ed7; }
+    .status {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      display: none;
+      font-size: 0.9rem;
+    }
+    .status.success { display: block; background: #d1e7dd; color: #0f5132; }
+    .status.error { display: block; background: #f8d7da; color: #842029; }
+
+    /* Context menu */
+    .context-area {
+      width: 100%;
+      height: 150px;
+      background: #e9ecef;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6c757d;
+      position: relative;
+      user-select: none;
+    }
+    .custom-context-menu {
+      display: none;
+      position: absolute;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 160px;
+    }
+    .custom-context-menu.visible { display: block; }
+    .custom-context-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      color: #212529;
+      border: none;
+      padding: 0.5rem 1rem;
+      margin: 0;
+      border-radius: 0;
+      font-size: 0.9rem;
+    }
+    .custom-context-menu button:hover { background: #e9ecef; }
+
+    /* Clickable image */
+    .image-grid {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .clickable-image {
+      width: 150px;
+      height: 100px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: border-color 0.2s;
+      object-fit: cover;
+    }
+    .clickable-image:hover { border-color: #0d6efd; }
+    .clickable-image.selected { border-color: #198754; }
+
+    /* Result panel */
+    #result-panel {
+      background: #fff;
+      border: 2px solid #198754;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+      display: none;
+    }
+    #result-panel.visible { display: block; }
+    #result-panel h2 { color: #198754; margin-top: 0; }
+    #result-summary { white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>🏋️ Journey 0 — The Gym</h1>
+  <p class="subtitle">Isolated component diagnostic for co-browsing compatibility</p>
+
+  <!-- 1. Date Picker -->
+  <div class="component-card" id="card-datepicker">
+    <h2>1. Date Picker</h2>
+    <label for="gym-date">Select a date:</label>
+    <input type="date" id="gym-date" name="gym-date" min="2026-01-01" max="2027-12-31">
+    <div id="date-status" class="status"></div>
+  </div>
+
+  <!-- 2. Select / Dropdown -->
+  <div class="component-card" id="card-select">
+    <h2>2. Select / Dropdown</h2>
+    <label for="gym-exercise">Choose an exercise:</label>
+    <select id="gym-exercise" name="gym-exercise">
+      <option value="">-- Select exercise --</option>
+      <option value="squat">Squat</option>
+      <option value="bench-press">Bench Press</option>
+      <option value="deadlift">Deadlift</option>
+      <option value="overhead-press">Overhead Press</option>
+      <option value="barbell-row">Barbell Row</option>
+    </select>
+    <div id="select-status" class="status"></div>
+  </div>
+
+  <!-- 3. Context Menu -->
+  <div class="component-card" id="card-contextmenu">
+    <h2>3. Context Menu</h2>
+    <p>Right-click (or long-press) the grey area below:</p>
+    <div class="context-area" id="gym-context-area">
+      Right-click here
+      <div class="custom-context-menu" id="gym-context-menu">
+        <button data-action="copy" id="ctx-copy">📋 Copy</button>
+        <button data-action="edit" id="ctx-edit">✏️ Edit</button>
+        <button data-action="delete" id="ctx-delete">🗑️ Delete</button>
+      </div>
+    </div>
+    <div id="context-status" class="status"></div>
+  </div>
+
+  <!-- 4. Clickable Images -->
+  <div class="component-card" id="card-image">
+    <h2>4. Clickable Images</h2>
+    <p>Click an image to select it:</p>
+    <div class="image-grid">
+      <!-- SVG placeholder images generated inline -->
+      <svg class="clickable-image" id="img-red" viewBox="0 0 150 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Red equipment">
+        <rect width="150" height="100" fill="#dc3545"/>
+        <text x="75" y="55" text-anchor="middle" fill="#fff" font-size="14" font-family="sans-serif">Red</text>
+      </svg>
+      <svg class="clickable-image" id="img-blue" viewBox="0 0 150 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Blue equipment">
+        <rect width="150" height="100" fill="#0d6efd"/>
+        <text x="75" y="55" text-anchor="middle" fill="#fff" font-size="14" font-family="sans-serif">Blue</text>
+      </svg>
+      <svg class="clickable-image" id="img-green" viewBox="0 0 150 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Green equipment">
+        <rect width="150" height="100" fill="#198754"/>
+        <text x="75" y="55" text-anchor="middle" fill="#fff" font-size="14" font-family="sans-serif">Green</text>
+      </svg>
+    </div>
+    <div id="image-status" class="status"></div>
+  </div>
+
+  <!-- 5. Textarea -->
+  <div class="component-card" id="card-textarea">
+    <h2>5. Textarea</h2>
+    <label for="gym-notes">Workout notes:</label>
+    <textarea id="gym-notes" name="gym-notes" placeholder="Enter your workout notes here..."></textarea>
+    <div id="textarea-status" class="status"></div>
+  </div>
+
+  <!-- Submit all -->
+  <div class="component-card">
+    <h2>Submit Workout</h2>
+    <button id="gym-submit" type="button">Submit All</button>
+    <div id="submit-status" class="status"></div>
+  </div>
+
+  <!-- Result panel (shown after submit) -->
+  <div id="result-panel">
+    <h2>✅ Submission Summary</h2>
+    <pre id="result-summary"></pre>
+  </div>
+
+  <script>
+    // --- Date Picker ---
+    const dateInput = document.getElementById('gym-date');
+    const dateStatus = document.getElementById('date-status');
+    dateInput.addEventListener('change', () => {
+      if (dateInput.value) {
+        dateStatus.textContent = `Date selected: ${dateInput.value}`;
+        dateStatus.className = 'status success';
+      }
+    });
+
+    // --- Select / Dropdown ---
+    const selectInput = document.getElementById('gym-exercise');
+    const selectStatus = document.getElementById('select-status');
+    selectInput.addEventListener('change', () => {
+      if (selectInput.value) {
+        selectStatus.textContent = `Exercise selected: ${selectInput.value}`;
+        selectStatus.className = 'status success';
+      }
+    });
+
+    // --- Context Menu ---
+    const contextArea = document.getElementById('gym-context-area');
+    const contextMenu = document.getElementById('gym-context-menu');
+    const contextStatus = document.getElementById('context-status');
+
+    contextArea.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const rect = contextArea.getBoundingClientRect();
+      contextMenu.style.left = `${e.clientX - rect.left}px`;
+      contextMenu.style.top = `${e.clientY - rect.top}px`;
+      contextMenu.classList.add('visible');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.classList.remove('visible');
+      }
+    });
+
+    contextMenu.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.getAttribute('data-action');
+        contextStatus.textContent = `Context action: ${action}`;
+        contextStatus.className = 'status success';
+        contextMenu.classList.remove('visible');
+      });
+    });
+
+    // --- Clickable Images ---
+    const images = document.querySelectorAll('.clickable-image');
+    const imageStatus = document.getElementById('image-status');
+    let selectedImage = null;
+
+    images.forEach(img => {
+      img.addEventListener('click', () => {
+        images.forEach(i => i.classList.remove('selected'));
+        img.classList.add('selected');
+        selectedImage = img.id;
+        const label = img.getAttribute('aria-label') || img.id;
+        imageStatus.textContent = `Image selected: ${label}`;
+        imageStatus.className = 'status success';
+      });
+    });
+
+    // --- Textarea ---
+    const textarea = document.getElementById('gym-notes');
+    const textareaStatus = document.getElementById('textarea-status');
+    textarea.addEventListener('input', () => {
+      if (textarea.value.trim().length > 0) {
+        textareaStatus.textContent = `Notes: ${textarea.value.trim().length} chars`;
+        textareaStatus.className = 'status success';
+      } else {
+        textareaStatus.className = 'status';
+      }
+    });
+
+    // --- Submit ---
+    const submitBtn = document.getElementById('gym-submit');
+    const submitStatus = document.getElementById('submit-status');
+    const resultPanel = document.getElementById('result-panel');
+    const resultSummary = document.getElementById('result-summary');
+
+    submitBtn.addEventListener('click', () => {
+      const results = {
+        date: dateInput.value || '(not set)',
+        exercise: selectInput.value || '(not set)',
+        contextAction: contextStatus.textContent ? contextStatus.textContent.replace('Context action: ', '') : '(none)',
+        selectedImage: selectedImage || '(none)',
+        notes: textarea.value.trim() || '(empty)',
+      };
+
+      const missing = [];
+      if (!dateInput.value) missing.push('date');
+      if (!selectInput.value) missing.push('exercise');
+      if (!selectedImage) missing.push('image');
+      if (!textarea.value.trim()) missing.push('notes');
+
+      if (missing.length > 0) {
+        submitStatus.textContent = `Missing: ${missing.join(', ')}`;
+        submitStatus.className = 'status error';
+        resultPanel.classList.remove('visible');
+      } else {
+        submitStatus.textContent = 'All components filled — submission complete!';
+        submitStatus.className = 'status success';
+        resultSummary.textContent = JSON.stringify(results, null, 2);
+        resultPanel.classList.add('visible');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -6,7 +6,8 @@ import { BenchmarkRunner } from './runner/runner.js';
 import { defaultTraceConfig } from './runner/trace.js';
 import { openDatabase, insertRun } from './db/index.js';
 import { generateJsonReport, generateMarkdownReport, generateComparisonReport, generateStakeholderReport } from './reporter/index.js';
-import { getSiteConfig, FLIGHT_APP_CONFIG, AUTH_APP_CONFIG, GOV_FORMS_CONFIG, RETURN_PORTAL_CONFIG, resolveAppUrls } from './journeys/config.js';
+import { getSiteConfig, FLIGHT_APP_CONFIG, AUTH_APP_CONFIG, GOV_FORMS_CONFIG, RETURN_PORTAL_CONFIG, GYM_CONFIG, resolveAppUrls, resolveGymUrl } from './journeys/config.js';
+import { J00TheGym } from './journeys/j00-the-gym.js';
 import { J01ProductPurchase } from './journeys/j01-product-purchase.js';
 import { J04CartRecovery } from './journeys/j04-cart-recovery.js';
 import { J05FlightBooking } from './journeys/j05-flight-booking.js';
@@ -62,7 +63,15 @@ program
     const proxyPort = parseInt(options.llmProxyPort ?? '8999', 10);
     const flakinessRuns = parseInt(options.flakinessRuns ?? '1', 10);
 
+    // Resolve Journey 0 URL — defaults to file:// if GYM_URL env not set and provider is direct
+    resolveGymUrl();
+    const gymUrl = process.env['GYM_URL'] ??
+      (options.provider === 'direct'
+        ? `file://${path.resolve(__dirname, '..', 'journeys', 'journey-0', 'index.html')}`
+        : GYM_CONFIG.baseUrl);
+
     const allJourneys: Record<string, Journey> = {
+      J00: new J00TheGym({ baseUrl: gymUrl }),
       J01: new J01ProductPurchase(config),
       J04: new J04CartRecovery(config),
       J05: new J05FlightBooking(FLIGHT_APP_CONFIG),
@@ -183,7 +192,11 @@ program
 function buildJourneys(journeyIds: string[]): Journey[] {
   const cfg = getSiteConfig();
   resolveAppUrls();
+  resolveGymUrl();
+  const gymUrl = process.env['GYM_URL'] ??
+    `file://${path.resolve(__dirname, '..', 'journeys', 'journey-0', 'index.html')}`;
   const allJourneys: Record<string, Journey> = {
+    J00: new J00TheGym({ baseUrl: gymUrl }),
     J01: new J01ProductPurchase(cfg),
     J04: new J04CartRecovery(cfg),
     J05: new J05FlightBooking(FLIGHT_APP_CONFIG),
