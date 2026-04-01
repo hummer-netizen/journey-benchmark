@@ -60,7 +60,7 @@ export class AutomationApi {
   constructor(options: AutomationApiOptions) {
     this.apiKey = options.apiKey;
     this.mcpEndpoint = options.mcpEndpoint ?? 'https://session-mcp.webfu.se/mcp';
-    this.timeout = options.timeout ?? 15000;
+    this.timeout = options.timeout ?? 45000;
   }
 
   /** Low-level HTTP POST returning body only — overrideable in tests via subclass */

@@ -205,7 +205,7 @@ export class WebfuseProvider implements AutomationProvider {
 
     // Step 4: Navigate to the target URL
     console.log(`  [Webfuse] Navigating to: ${url}`);
-    await api.navigate(sessionId, url);
+    await api.navigate(sessionId, "about:blank"); await sleep(2000); await api.navigate(sessionId, url); await sleep(3000);
 
     // Verify navigation
     let confirmedUrl = url;
@@ -317,8 +317,7 @@ export class WebfuseProvider implements AutomationProvider {
         await api.click(sessionId, target);
         await sleep(300);
       },
-      fill: async (selector: string, value: string, _options?: Record<string, unknown>) => {
-        const target = await resolveTarget(selector);
+      fill: async (selector: string, value: string, _options?: Record<string, unknown>) => { const target = await resolveTarget(selector); await api.click(sessionId, target); await sleep(500);
         await api.type(sessionId, target, value, { overwrite: true });
       },
       type: async (selector: string, text: string, _options?: Record<string, unknown>) => {
