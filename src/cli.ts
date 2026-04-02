@@ -122,9 +122,22 @@ program
       ? defaultTraceConfig(runId, path.join(__dirname, '..', 'traces'))
       : undefined;
 
-    // When only J00 is selected, use the Gym URL for the runner's base URL
-    // (the shop URL may not be reachable and J00 doesn't need it)
-    const runnerBaseUrl = (journeyIds.length === 1 && journeyIds[0] === 'J00') ? gymUrl : config.baseUrl;
+    // Determine runner baseUrl: journeys that use standalone apps (not the shop)
+    // should use their own URL so the reachability check passes even if the shop is down.
+    const shopJourneys = new Set(['J01', 'J04', 'J14']);
+    const needsShop = journeyIds.some(id => shopJourneys.has(id));
+    const standaloneUrls: Record<string, string> = {
+      J00: gymUrl,
+      J05: FLIGHT_APP_CONFIG.baseUrl,
+      J08: AUTH_APP_CONFIG.baseUrl,
+      J09: AUTH_APP_CONFIG.baseUrl,
+      J12: GOV_FORMS_CONFIG.baseUrl,
+      J17: RETURN_PORTAL_CONFIG.baseUrl,
+    };
+    // If no shop journeys are selected, use the first standalone journey's URL for reachability
+    const runnerBaseUrl = needsShop
+      ? config.baseUrl
+      : (standaloneUrls[journeyIds[0]] ?? config.baseUrl);
 
     const runner = new BenchmarkRunner({
       provider,

@@ -286,54 +286,64 @@ export class WebfuseAgent {
         return { outcome: 'completed' };
       }
 
-      const toolCall = assistantMessage.tool_calls[0]!;
-      const toolName = toolCall.function.name;
-      let toolArgs: Record<string, unknown> = {};
-      try {
-        toolArgs = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
-      } catch {
-        toolArgs = {};
-      }
+      // Process ALL tool calls (Anthropic requires tool_result for every tool_use)
+      let doneResult: GoalExecutionResult | null = null;
+      let handoffResult: GoalExecutionResult | null = null;
 
-      console.log(`  [Agent] Tool: ${toolName}(${JSON.stringify(toolArgs)})`);
+      for (const toolCall of assistantMessage.tool_calls) {
+        const toolName = toolCall.function.name;
+        let toolArgs: Record<string, unknown> = {};
+        try {
+          toolArgs = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+        } catch {
+          toolArgs = {};
+        }
 
-      if (toolName === 'done') {
-        console.log(`  [Agent] Done: ${toolArgs['summary'] as string}`);
-        // Add tool result to satisfy message format, then return
+        console.log(`  [Agent] Tool: ${toolName}(${JSON.stringify(toolArgs)})`);
+
+        if (toolName === 'done') {
+          console.log(`  [Agent] Done: ${toolArgs['summary'] as string}`);
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: 'Goal completed.',
+          });
+          doneResult = { outcome: 'completed' };
+          continue;
+        }
+
+        if (toolName === 'handoff') {
+          const reason = toolArgs['reason'] as string;
+          const currentState = toolArgs['currentState'] as string | undefined;
+          console.log(`  [Agent] Handoff triggered: ${reason}`);
+          if (currentState) console.log(`  [Agent] State: ${currentState}`);
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: 'Handoff acknowledged. Human operator will take over.',
+          });
+          handoffResult = { outcome: 'handoff', handoffReason: reason };
+          continue;
+        }
+
+        // Execute the tool
+        const result = await this.executeTool(toolName, toolArgs);
+        console.log(`  [Agent] Result: ${result}`);
+
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: 'Goal completed.',
+          content: result,
         });
-        return { outcome: 'completed' };
       }
 
-      if (toolName === 'handoff') {
-        const reason = toolArgs['reason'] as string;
-        const currentState = toolArgs['currentState'] as string | undefined;
-        console.log(`  [Agent] Handoff triggered: ${reason}`);
-        if (currentState) console.log(`  [Agent] State: ${currentState}`);
-        messages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: 'Handoff acknowledged. Human operator will take over.',
-        });
-        return { outcome: 'handoff', handoffReason: reason };
-      }
-
-      // Execute the tool
-      const result = await this.executeTool(toolName, toolArgs);
-      console.log(`  [Agent] Result: ${result}`);
+      // If done or handoff was signalled, return after processing all tool_results
+      if (doneResult) return doneResult;
+      if (handoffResult) return handoffResult;
 
       // Update page context for next iteration
       const updatedTree = await this.extractAXTree();
       const updatedUrl = this.page.url();
-
-      messages.push({
-        role: 'tool',
-        tool_call_id: toolCall.id,
-        content: result,
-      });
 
       // Add fresh page state as next user message
       messages.push({
@@ -462,12 +472,20 @@ export class WebfuseAgent {
       const systemText = systemMessages.map(m => m.content ?? '').join('\n');
 
       // Convert non-system messages to Anthropic format
+      // Anthropic requires consecutive tool_result blocks to be merged into a single user message
       const anthropicMessages: Array<Record<string, unknown>> = [];
-      for (const msg of messages) {
+      for (let mi = 0; mi < messages.length; mi++) {
+        const msg = messages[mi]!;
         if (msg.role === 'system') continue;
 
         if (msg.role === 'user') {
-          anthropicMessages.push({ role: 'user', content: msg.content ?? '' });
+          // Merge with previous user message if last was also user (avoids consecutive user messages)
+          const last = anthropicMessages[anthropicMessages.length - 1];
+          if (last && last['role'] === 'user' && typeof last['content'] === 'string') {
+            last['content'] = (last['content'] as string) + '\n' + (msg.content ?? '');
+          } else {
+            anthropicMessages.push({ role: 'user', content: msg.content ?? '' });
+          }
         } else if (msg.role === 'assistant') {
           const content: Array<Record<string, unknown>> = [];
           if (msg.content) {
@@ -489,14 +507,22 @@ export class WebfuseAgent {
             anthropicMessages.push({ role: 'assistant', content });
           }
         } else if (msg.role === 'tool') {
-          anthropicMessages.push({
-            role: 'user',
-            content: [{
-              type: 'tool_result',
-              tool_use_id: msg.tool_call_id,
-              content: msg.content ?? '',
-            }],
-          });
+          // Merge consecutive tool_result blocks into the same user message
+          const last = anthropicMessages[anthropicMessages.length - 1];
+          const toolResultBlock = {
+            type: 'tool_result',
+            tool_use_id: msg.tool_call_id,
+            content: msg.content ?? '',
+          };
+          if (last && last['role'] === 'user' && Array.isArray(last['content']) &&
+              (last['content'] as Array<Record<string, unknown>>).every((b: Record<string, unknown>) => b['type'] === 'tool_result')) {
+            (last['content'] as Array<Record<string, unknown>>).push(toolResultBlock);
+          } else {
+            anthropicMessages.push({
+              role: 'user',
+              content: [toolResultBlock],
+            });
+          }
         }
       }
 
