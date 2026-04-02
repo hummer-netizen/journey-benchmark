@@ -252,37 +252,37 @@ export class AutomationApi {
   async click(sessionId: string, target: string, options?: Record<string, unknown>): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId, target };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('act_click', args);
+    return this.callTool('act.click', args);
   }
 
   async type(sessionId: string, target: string, text: string, options?: { overwrite?: boolean }): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId, target, text };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('act_type', args);
+    return this.callTool('act.type', args);
   }
 
   async keyPress(sessionId: string, target: string, key: string, options?: Record<string, unknown>): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId, target, key };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('act_keyPress', args);
+    return this.callTool('act.keyPress', args);
   }
 
   async scroll(sessionId: string, target: string, amount: number, options?: Record<string, unknown>): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId, target, amount };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('act_scroll', args);
+    return this.callTool('act.scroll', args);
   }
 
   async mouseMove(sessionId: string, target: string, options?: Record<string, unknown>): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId, target };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('act_mouseMove', args);
+    return this.callTool('act.mouseMove', args);
   }
 
   async select(sessionId: string, target: string, value: string, options?: Record<string, unknown>): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId, target, value };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('act_select', args);
+    return this.callTool('act.select', args);
   }
 
   // ---------------------------------------------------------------------------
@@ -292,7 +292,7 @@ export class AutomationApi {
   async domSnapshot(sessionId: string, options?: { webfuseIDs?: boolean }): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('see_domSnapshot', args);
+    return this.callTool('see.domSnapshot', args);
   }
 
   async guiSnapshot(sessionId: string): Promise<Buffer> {
@@ -303,7 +303,7 @@ export class AutomationApi {
       jsonrpc: '2.0',
       id,
       method: 'tools/call',
-      params: { name: 'see_guiSnapshot', arguments: { session_id: sessionId } },
+      params: { name: 'see.guiSnapshot', arguments: { session_id: sessionId } },
     });
 
     const headers: Record<string, string> = {
@@ -318,28 +318,28 @@ export class AutomationApi {
     try { parsed = this.parseSseData(raw); } catch {
       throw new Error(`Failed to parse guiSnapshot response: ${raw.slice(0, 200)}`);
     }
-    if (parsed.error) throw new Error(`MCP tool error [see_guiSnapshot]: ${parsed.error.message}`);
+    if (parsed.error) throw new Error(`MCP tool error [see.guiSnapshot]: ${parsed.error.message}`);
     const content = parsed.result?.content ?? [];
     for (const c of content) {
       if (c.type === 'image' && c.data) {
-        this._auditLog.push({ tool: 'see_guiSnapshot', args: { session_id: sessionId }, result: '[image]', timestamp: Date.now() });
+        this._auditLog.push({ tool: 'see.guiSnapshot', args: { session_id: sessionId }, result: '[image]', timestamp: Date.now() });
         return Buffer.from(c.data, 'base64');
       }
     }
     // Fallback: text might be a base64 string or URL
     const text = content.find(c => c.type === 'text')?.text ?? '';
-    this._auditLog.push({ tool: 'see_guiSnapshot', args: { session_id: sessionId }, result: text.slice(0, 50), timestamp: Date.now() });
+    this._auditLog.push({ tool: 'see.guiSnapshot', args: { session_id: sessionId }, result: text.slice(0, 50), timestamp: Date.now() });
     return text ? Buffer.from(text, 'base64') : Buffer.alloc(0);
   }
 
   async accessibilityTree(sessionId: string, options?: Record<string, unknown>): Promise<string> {
     const args: Record<string, unknown> = { session_id: sessionId };
     if (options && Object.keys(options).length > 0) args['options'] = options;
-    return this.callTool('see_accessibilityTree', args);
+    return this.callTool('see.accessibilityTree', args);
   }
 
   async textSelection(sessionId: string): Promise<string> {
-    return this.callTool('see_textSelection', { session_id: sessionId });
+    return this.callTool('see.textSelection', { session_id: sessionId });
   }
 
   // ---------------------------------------------------------------------------
@@ -347,7 +347,7 @@ export class AutomationApi {
   // ---------------------------------------------------------------------------
 
   async pageInfo(sessionId: string): Promise<{ url: string; title: string }> {
-    const text = await this.callTool('page_info', { session_id: sessionId });
+    const text = await this.callTool('pageInfo', { session_id: sessionId });
     try {
       return JSON.parse(text) as { url: string; title: string };
     } catch {

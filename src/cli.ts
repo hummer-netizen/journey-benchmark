@@ -122,10 +122,14 @@ program
       ? defaultTraceConfig(runId, path.join(__dirname, '..', 'traces'))
       : undefined;
 
+    // When only J00 is selected, use the Gym URL for the runner's base URL
+    // (the shop URL may not be reachable and J00 doesn't need it)
+    const runnerBaseUrl = (journeyIds.length === 1 && journeyIds[0] === 'J00') ? gymUrl : config.baseUrl;
+
     const runner = new BenchmarkRunner({
       provider,
       journeys: selectedJourneys,
-      baseUrl: config.baseUrl,
+      baseUrl: runnerBaseUrl,
       site: options.site,
       trace: traceConfig,
     });
