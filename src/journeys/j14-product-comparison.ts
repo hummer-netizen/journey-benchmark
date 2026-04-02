@@ -58,6 +58,7 @@ export class J14ProductComparison extends BaseJourney {
     return [
       {
         name: 'Search for products',
+        goal: "Navigate to the shop homepage, search for 'lamp', and verify at least 2 product results are shown.",
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
@@ -79,16 +80,13 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Open first product and record details',
+        goal: 'Click on the first product in the search results and note its name and price.',
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error(`Need at least 2 products, found ${links.length}`);
-          // Use goto(href) so proxy-frame navigation is reliable (link clicks may not navigate in Surfly)
-          const href = await links[0]!.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await links[0]!.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await links[0]!.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(isMagento ? '.price-box' : selectors.productPrice, { timeout: 20000 });
           const product = await this.extractProductInfo(page, 0);
           this.products.push(product);
@@ -97,6 +95,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Return to product listing',
+        goal: 'Navigate back to the search results page showing the list of products.',
         execute: async (page: Page) => {
           // Use goto instead of goBack — goBack is unreliable in proxy frames (Surfly)
           await page.goto(this.searchResultsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -105,16 +104,13 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Open second product and record details',
+        goal: 'Click on the second product in the search results and note its name and price.',
         execute: async (page: Page) => {
           const links = await page.$$(selectors.productLink);
           if (links.length < 2) throw new Error('Second product not found in listing');
-          // Use goto(href) so proxy-frame navigation is reliable
-          const href = await links[1]!.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await links[1]!.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await links[1]!.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(isMagento ? '.price-box' : selectors.productPrice, { timeout: 20000 });
           const product = await this.extractProductInfo(page, 1);
           this.products.push(product);
@@ -123,6 +119,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Compare products and identify cheaper',
+        goal: 'Compare the prices of the two recorded products and identify which one is cheaper. No browser interaction needed.',
         execute: async (_page: Page) => {
           if (this.products.length < 2) throw new Error('Fewer than 2 products recorded');
           const [p1, p2] = this.products as [ProductInfo, ProductInfo];
@@ -136,6 +133,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Navigate to cheaper product',
+        goal: 'Return to the search results and click on the cheaper of the two products.',
         execute: async (page: Page) => {
           const [p1, p2] = this.products as [ProductInfo, ProductInfo];
           const cheaperIndex = p1.price <= p2.price ? 0 : 1;
@@ -145,19 +143,16 @@ export class J14ProductComparison extends BaseJourney {
           await page.goto(this.searchResultsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.productLink, { timeout: 15000 });
           const links = await page.$$(selectors.productLink);
-          // Use goto(href) so proxy-frame navigation is reliable
-          const href = await links[cheaperIndex]!.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await links[cheaperIndex]!.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await links[cheaperIndex]!.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
           console.log(`  Selected: "${cheaper.name}"`);
         },
       },
       {
         name: 'Add cheaper product to cart',
+        goal: 'Select any required product options (size/color) if present, then click Add to Cart.',
         execute: async (page: Page) => {
           if (isMagento) {
             // Handle swatch-style configurable options
@@ -196,6 +191,7 @@ export class J14ProductComparison extends BaseJourney {
       },
       {
         name: 'Verify cart contains selected product',
+        goal: 'Navigate to the shopping cart and verify it contains at least one item.',
         execute: async (page: Page) => {
           const cartUrl = isMagento ? `${baseUrl}/checkout/cart/` : `${baseUrl}/cart`;
           await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });

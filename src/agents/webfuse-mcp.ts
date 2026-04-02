@@ -2,14 +2,17 @@ import type { Page } from 'playwright';
 import { WebfuseProvider } from '../webfuse/webfuse.js';
 import { LLMProxy } from '../services/llm-proxy/proxy.js';
 import type { AutomationProvider } from '../webfuse/provider.js';
+import type { GoalAwareProvider } from '../types.js';
 import type { LLMProxySummary } from '../services/llm-proxy/types.js';
+import { WebfuseAgent } from './webfuse-agent.js';
 
 /**
  * Webfuse MCP Agent provider.
  * Wraps WebfuseProvider and starts an in-process LLM proxy for token tracking.
- * Agentic LLM calls should point to http://localhost:{proxyPort}/v1 via OPENAI_BASE_URL.
+ * Implements GoalAwareProvider so BaseJourney can delegate goal-based steps
+ * to the LLM agent (WebfuseAgent) instead of the hardcoded Playwright selectors.
  */
-export class WebfuseMcpProvider implements AutomationProvider {
+export class WebfuseMcpProvider implements AutomationProvider, GoalAwareProvider {
   private webfuse: WebfuseProvider;
   private proxy: LLMProxy;
   private proxyStarted = false;
@@ -46,6 +49,19 @@ export class WebfuseMcpProvider implements AutomationProvider {
       await this.proxy.stop().catch(() => {});
       this.proxyStarted = false;
     }
+  }
+
+  /**
+   * Execute a journey step using the LLM agent instead of hardcoded selectors.
+   * Called by BaseJourney when the step has a `goal` field and the provider is
+   * GoalAwareProvider-compatible.
+   */
+  async executeGoal(page: Page, goal: string): Promise<void> {
+    const agent = new WebfuseAgent(page, this.proxyPort, {
+      automationApi: this.webfuse.getAutomationApi() ?? undefined,
+      sessionId: this.webfuse.getActiveSessionId() ?? undefined,
+    });
+    await agent.executeGoal(goal);
   }
 
   getProxySummary(): LLMProxySummary {

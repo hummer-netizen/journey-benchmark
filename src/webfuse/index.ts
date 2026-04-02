@@ -1,6 +1,8 @@
 export type { AutomationProvider } from './provider.js';
 export { DirectProvider } from './direct.js';
 export { WebfuseProvider } from './webfuse.js';
+export { AutomationApi } from './automation-api.js';
+export type { AutomationApiOptions, AuditEntry } from './automation-api.js';
 
 import { DirectProvider } from './direct.js';
 import { WebfuseProvider } from './webfuse.js';

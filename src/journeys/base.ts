@@ -1,6 +1,18 @@
 import type { Page } from 'playwright';
-import type { Journey, JourneyResult, JourneyStep, SiteConfig } from '../types.js';
+import type { Journey, JourneyResult, JourneyStep, SiteConfig, GoalAwareProvider, GoalExecutionResult } from '../types.js';
 import type { MetricCollector } from '../metrics/collector.js';
+import type { AutomationProvider } from '../webfuse/provider.js';
+
+/** Type guard — returns true if the provider implements GoalAwareProvider */
+function isGoalAware(provider: AutomationProvider): provider is AutomationProvider & GoalAwareProvider {
+  return typeof (provider as unknown as GoalAwareProvider).executeGoal === 'function';
+}
+
+/** Normalise the executeGoal return value (void | GoalExecutionResult) to GoalExecutionResult */
+function normaliseGoalResult(raw: void | GoalExecutionResult): GoalExecutionResult {
+  if (!raw) return { outcome: 'completed' };
+  return raw;
+}
 
 /** Base class with shared execution logic for all journeys */
 export abstract class BaseJourney implements Journey {
@@ -14,28 +26,50 @@ export abstract class BaseJourney implements Journey {
     this.config = config;
   }
 
-  async execute(page: Page, collector: MetricCollector): Promise<JourneyResult> {
+  async execute(
+    page: Page,
+    collector: MetricCollector,
+    provider?: AutomationProvider,
+  ): Promise<JourneyResult> {
     collector.reset();
     const startedAt = new Date().toISOString();
     const journeyStart = Date.now();
     let status: JourneyResult['status'] = 'passed';
     let errorMessage: string | undefined;
 
+    let handoffReason: string | undefined;
+
     for (let i = 0; i < this.steps.length; i++) {
       const step = this.steps[i];
       if (!step) continue;
-      const result = await collector.measure(i, step.name, () => step.execute(page));
-      if (result.status === 'failed') {
-        status = 'failed';
-        errorMessage = result.errorMessage;
-        // Mark remaining steps as skipped
-        for (let j = i + 1; j < this.steps.length; j++) {
-          const skippedStep = this.steps[j];
-          if (skippedStep) {
-            collector.getResults(); // access to trigger no-op
-          }
+
+      // Use the LLM agent when the provider is goal-aware and the step has a goal (Track C)
+      const useAgent = provider && isGoalAware(provider) && step.goal;
+
+      if (useAgent) {
+        // Goal-aware execution with handoff support
+        const goalProvider = provider as AutomationProvider & GoalAwareProvider;
+        const result = await collector.measureWithHandoff(i, step.name, async () => {
+          const raw = await goalProvider.executeGoal(page, step.goal!);
+          return normaliseGoalResult(raw);
+        });
+        if (result.status === 'handoff') {
+          status = 'handoff';
+          handoffReason = result.handoffReason;
+          break;
         }
-        break;
+        if (result.status === 'failed') {
+          status = 'failed';
+          errorMessage = result.errorMessage;
+          break;
+        }
+      } else {
+        const result = await collector.measure(i, step.name, () => step.execute(page));
+        if (result.status === 'failed') {
+          status = 'failed';
+          errorMessage = result.errorMessage;
+          break;
+        }
       }
     }
 
@@ -52,6 +86,7 @@ export abstract class BaseJourney implements Journey {
       stepsCompleted,
       steps: allResults,
       errorMessage,
+      handoffReason,
       startedAt,
       finishedAt: new Date().toISOString(),
     };

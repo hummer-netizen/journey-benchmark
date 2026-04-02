@@ -75,7 +75,7 @@ export class BenchmarkRunner {
             await startTrace(page.context(), traceConfig).catch(() => {});
           }
           const collector = new MetricCollector();
-          result = await journey.execute(page, collector);
+          result = await journey.execute(page, collector, this.options.provider);
           if (traceConfig?.enabled) {
             const tracePath = await stopTrace(page.context(), journey.id, traceConfig).catch(() => null);
             if (tracePath) console.log(`  Trace: ${tracePath}`);
@@ -102,7 +102,7 @@ export class BenchmarkRunner {
         }
       }
 
-      const icon = result.status === 'passed' ? 'PASS' : result.status === 'failed' ? 'FAIL' : 'ERROR';
+      const icon = result.status === 'passed' ? 'PASS' : result.status === 'handoff' ? 'HANDOFF' : result.status === 'failed' ? 'FAIL' : 'ERROR';
       console.log(`  [${icon}] ${result.status.toUpperCase()} — ${result.executionTimeMs}ms (${(result.partialCompletion * 100).toFixed(0)}% complete)`);
       if (result.errorMessage) {
         console.log(`  Error: ${result.errorMessage}`);

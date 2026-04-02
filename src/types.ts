@@ -40,22 +40,26 @@ export interface SiteConfig {
 export interface StepResult {
   stepIndex: number;
   stepName: string;
-  status: 'passed' | 'failed' | 'skipped';
+  status: 'passed' | 'failed' | 'skipped' | 'handoff';
   executionTimeMs: number;
   errorMessage?: string;
+  /** When status is 'handoff', the reason the agent triggered a handoff */
+  handoffReason?: string;
 }
 
 /** Result of a complete journey execution */
 export interface JourneyResult {
   journeyId: string;
   journeyName: string;
-  status: 'passed' | 'failed' | 'error';
+  status: 'passed' | 'failed' | 'error' | 'handoff';
   executionTimeMs: number;
   partialCompletion: number;  // 0.0 to 1.0
   stepsTotal: number;
   stepsCompleted: number;
   steps: StepResult[];
   errorMessage?: string;
+  /** When status is 'handoff', the reason the agent triggered a handoff to a human */
+  handoffReason?: string;
   startedAt: string;
   finishedAt: string;
 }
@@ -77,7 +81,22 @@ export interface RunResult {
 /** A single journey step definition */
 export interface JourneyStep {
   name: string;
+  /** Natural-language goal for LLM-driven automation (Track C / WebfuseMcpProvider) */
+  goal?: string;
   execute(page: Page): Promise<void>;
+}
+
+/** Result of a goal execution by a GoalAwareProvider */
+export interface GoalExecutionResult {
+  /** Whether the agent completed the goal or triggered a handoff */
+  outcome: 'completed' | 'handoff';
+  /** When outcome is 'handoff', the agent's stated reason for triggering handoff */
+  handoffReason?: string;
+}
+
+/** Provider that can execute journey steps from a natural-language goal (Track C) */
+export interface GoalAwareProvider {
+  executeGoal(page: Page, goal: string): Promise<void | GoalExecutionResult>;
 }
 
 /** Journey interface that all journey implementations must satisfy */
@@ -85,5 +104,9 @@ export interface Journey {
   id: string;
   name: string;
   steps: JourneyStep[];
-  execute(page: Page, collector: import('./metrics/collector.js').MetricCollector): Promise<JourneyResult>;
+  execute(
+    page: Page,
+    collector: import('./metrics/collector.js').MetricCollector,
+    provider?: import('./webfuse/provider.js').AutomationProvider,
+  ): Promise<JourneyResult>;
 }

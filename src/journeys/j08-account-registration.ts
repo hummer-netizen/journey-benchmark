@@ -47,21 +47,19 @@ export class J08AccountRegistration extends BaseJourney {
   private buildSteps(): JourneyStep[] {
     return [
       {
-        name: 'Navigate to auth app homepage',
-        execute: async (page: Page) => {
-          await page.goto(AUTH_APP_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await page.waitForSelector('a[href="/register"]', { timeout: 10000 });
-        },
-      },
-      {
         name: 'Navigate to registration page',
+        goal: 'Navigate to the /register page and wait for the registration form to load.',
         execute: async (page: Page) => {
-          await page.goto(`${AUTH_APP_URL}/register`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Generate a fresh email for each run to avoid "already registered" collisions
+          this.testEmail = `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@example.com`;
+          // Navigate directly to /register (avoids same-origin proxy navigation issues in Surfly)
+          await page.goto(`${AUTH_APP_URL}/register`, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector('#register-btn', { timeout: 10000 });
         },
       },
       {
         name: 'Fill registration form',
+        goal: "Fill in the registration form with: name='Test User', email=test_<timestamp>@example.com, password='TestPass123!'.",
         execute: async (page: Page) => {
           await page.fill('input[name="name"]', 'Test User');
           await page.fill('input[name="email"]', this.testEmail);
@@ -70,6 +68,7 @@ export class J08AccountRegistration extends BaseJourney {
       },
       {
         name: 'Submit registration',
+        goal: "Click the Register button and verify the registration was successful (no error message shown).",
         execute: async (page: Page) => {
           await page.click('#register-btn');
           await page.waitForSelector('.success, .error', { timeout: 15000 });
@@ -82,12 +81,14 @@ export class J08AccountRegistration extends BaseJourney {
       },
       {
         name: 'Retrieve verification email from MailPit',
+        goal: 'Wait for the email verification link to be available via MailPit API. No browser interaction needed for this step.',
         execute: async (_page: Page) => {
           this.verifyUrl = await this.fetchVerificationEmail(this.testEmail);
         },
       },
       {
         name: 'Visit email verification link',
+        goal: 'Navigate to the email verification link to activate the account and verify no error is shown.',
         execute: async (page: Page) => {
           // Replace app URL if it differs (e.g. internal vs external)
           const adjustedUrl = this.verifyUrl.replace(/^https?:\/\/[^/]+/, AUTH_APP_URL);
@@ -102,6 +103,7 @@ export class J08AccountRegistration extends BaseJourney {
       },
       {
         name: 'Verify account is active (login)',
+        goal: "Navigate to /login, fill in the test email and password 'TestPass123!', click Login, and verify login succeeds.",
         execute: async (page: Page) => {
           await page.goto(`${AUTH_APP_URL}/login`, { waitUntil: 'domcontentloaded', timeout: 15000 });
           await page.fill('input[name="email"]', this.testEmail);

@@ -52,24 +52,24 @@ describe('J08AccountRegistration', () => {
     expect(journey.name).toBe('Account Registration + Email Verify');
   });
 
-  it('has 7 steps', () => {
-    expect(journey.steps).toHaveLength(7);
+  it('has 6 steps', () => {
+    expect(journey.steps).toHaveLength(6);
   });
 
-  it('step 0 navigates to auth app homepage', async () => {
+  it('step 0 navigates directly to registration page', async () => {
     const page = makeMockPage();
     await journey.steps[0]!.execute(page);
-    expect(page.goto).toHaveBeenCalledWith('http://localhost:3334', expect.any(Object));
+    expect(page.goto).toHaveBeenCalledWith('http://localhost:3334/register', expect.any(Object));
   });
 
-  it('step 2 fills registration form fields', async () => {
+  it('step 1 fills registration form fields', async () => {
     const page = makeMockPage();
-    await journey.steps[2]!.execute(page);
+    await journey.steps[1]!.execute(page);
     expect(page.fill).toHaveBeenCalledWith('input[name="name"]', 'Test User');
     expect(page.fill).toHaveBeenCalledWith('input[name="password"]', 'TestPass123!');
   });
 
-  it('step 4 fetches verification email from MailPit', async () => {
+  it('step 3 fetches verification email from MailPit', async () => {
     const email = (journey as unknown as { testEmail: string }).testEmail;
     const mockFetch = vi.mocked(global.fetch);
     mockFetch
@@ -83,7 +83,7 @@ describe('J08AccountRegistration', () => {
       } as Response);
 
     const page = makeMockPage();
-    await journey.steps[4]!.execute(page);
+    await journey.steps[3]!.execute(page);
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/messages'));
   });
 });

@@ -19,6 +19,7 @@ export class J01ProductPurchase extends BaseJourney {
     return [
       {
         name: 'Navigate to homepage',
+        goal: 'Navigate to the shop homepage and wait for the search bar to appear.',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
@@ -26,6 +27,7 @@ export class J01ProductPurchase extends BaseJourney {
       },
       {
         name: 'Search and open a product detail page',
+        goal: "Type 'book' into the search bar and press Enter, then click the first product link in the search results to open its detail page.",
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found');
@@ -34,18 +36,15 @@ export class J01ProductPurchase extends BaseJourney {
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found in search results');
-          // Use goto(href) so proxy-frame navigation works (link clicks may not navigate in Surfly)
-          const href = await link.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await link.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await link.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
         },
       },
       {
         name: 'Add product to cart',
+        goal: 'If the product has size or color options, select the first available option for each. Then click the Add to Cart button.',
         execute: async (page: Page) => {
           if (isMagento) {
             // Handle swatch-style configurable options
@@ -85,6 +84,7 @@ export class J01ProductPurchase extends BaseJourney {
       },
       {
         name: 'Proceed to checkout',
+        goal: 'Navigate to the checkout page.',
         execute: async (page: Page) => {
           if (isMagento) {
             // Navigate directly to checkout (more reliable than mini-cart click)
@@ -123,6 +123,7 @@ export class J01ProductPurchase extends BaseJourney {
       },
       {
         name: 'Fill shipping information (guest checkout)',
+        goal: "Fill the guest checkout shipping form with: email=bench_test@example.com, firstName=Test, lastName=User, address=123 Main St, city=Anytown, state=California, postcode=90210, phone=5555555555.",
         execute: async (page: Page) => {
           if (isMagento) {
             // Fill email — this triggers KO to evaluate the "existing customer" check
@@ -233,6 +234,7 @@ export class J01ProductPurchase extends BaseJourney {
       },
       {
         name: 'Select shipping method',
+        goal: 'Select the first available shipping method radio button, then click the Next button to proceed to the payment step.',
         execute: async (page: Page) => {
           if (isMagento) {
             // Wait for shipping methods to load
@@ -258,6 +260,7 @@ export class J01ProductPurchase extends BaseJourney {
       },
       {
         name: 'Complete payment and place order',
+        goal: "Select the 'Check / Money order' payment method if available, then click the Place Order button.",
         execute: async (page: Page) => {
           if (isMagento) {
             // Wait for payment methods to be visible
@@ -290,6 +293,7 @@ export class J01ProductPurchase extends BaseJourney {
       },
       {
         name: 'Verify order confirmation',
+        goal: "Verify that the order confirmation page is displayed, showing a 'Thank you' message or order success indicator.",
         execute: async (page: Page) => {
           const url = page.url();
           if (url.includes('order-confirmation') || url.includes('checkout/success') || url.includes('onepage/success')) return;

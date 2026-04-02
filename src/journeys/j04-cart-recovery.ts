@@ -20,6 +20,7 @@ export class J04CartRecovery extends BaseJourney {
     return [
       {
         name: 'Navigate to homepage',
+        goal: 'Navigate to the shop homepage and wait for the search bar to appear.',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
@@ -27,6 +28,7 @@ export class J04CartRecovery extends BaseJourney {
       },
       {
         name: 'Search and add item to cart',
+        goal: "Search for 'book', click the first product result, select any required options (size/color), and click Add to Cart.",
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found');
@@ -35,13 +37,9 @@ export class J04CartRecovery extends BaseJourney {
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found in search results');
-          // Use goto(href) so proxy-frame navigation works (link clicks may not navigate in Surfly)
-          const href = await link.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await link.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await link.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           // Select options if configurable or custom-option product
@@ -80,6 +78,7 @@ export class J04CartRecovery extends BaseJourney {
       },
       {
         name: 'Verify item in cart before session expiry',
+        goal: 'Navigate to the shopping cart page and verify there is at least one item in the cart.',
         execute: async (page: Page) => {
           await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });
           await page.waitForTimeout(3000);
@@ -96,6 +95,7 @@ export class J04CartRecovery extends BaseJourney {
       },
       {
         name: 'Clear session (simulate cart expiry)',
+        goal: 'Clear all browser cookies and local/session storage to simulate a session expiry.',
         execute: async (page: Page) => {
           // Clear outer Playwright context cookies (direct provider)
           const context = page.context();
@@ -120,6 +120,7 @@ export class J04CartRecovery extends BaseJourney {
       },
       {
         name: 'Navigate back to site after expiry',
+        goal: 'Navigate back to the shop homepage after the session has been cleared.',
         execute: async (page: Page) => {
           await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await page.waitForSelector(selectors.searchInput, { timeout: 20000 });
@@ -127,6 +128,7 @@ export class J04CartRecovery extends BaseJourney {
       },
       {
         name: 'Re-add item to cart (recovery)',
+        goal: "Search for 'book' again, click the first product result, select any required options, and click Add to Cart to recover the abandoned cart.",
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found after session clear');
@@ -135,13 +137,9 @@ export class J04CartRecovery extends BaseJourney {
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
           if (!link) throw new Error('No product found after session clear');
-          // Use goto(href) so proxy-frame navigation works
-          const href = await link.getAttribute('href');
-          if (href) {
-            await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          } else {
-            await link.click();
-          }
+          // Click the product link directly (works with both direct and Surfly proxy)
+          await link.click();
+          await page.waitForTimeout(2000);
           await page.waitForSelector(selectors.addToCartButton, { timeout: 20000 });
 
           if (isMagento) {
@@ -179,6 +177,7 @@ export class J04CartRecovery extends BaseJourney {
       },
       {
         name: 'Verify cart recovered successfully',
+        goal: 'Navigate to the shopping cart and confirm it contains at least one item, verifying the cart was recovered successfully.',
         execute: async (page: Page) => {
           await page.goto(cartUrl, { waitUntil: 'networkidle', timeout: 30000 });
           await page.waitForTimeout(3000);
