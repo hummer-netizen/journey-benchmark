@@ -1,4 +1,5 @@
 import * as http from 'node:http';
+import * as https from 'node:https';
 import type { Page } from 'playwright';
 import type { GoalExecutionResult } from '../types.js';
 import type { AutomationApi } from '../webfuse/automation-api.js';
@@ -438,7 +439,158 @@ export class WebfuseAgent {
     }
   }
 
+  private get useAnthropic(): boolean {
+    return !process.env['OPENAI_API_KEY'] && !!process.env['ANTHROPIC_API_KEY'];
+  }
+
+  private get anthropicModel(): string {
+    return process.env['ANTHROPIC_MODEL'] ?? 'claude-sonnet-4-20250514';
+  }
+
   private callLLM(messages: Message[]): Promise<ChatResponse> {
+    if (this.useAnthropic) {
+      return this.callAnthropicLLM(messages);
+    }
+    return this.callOpenAILLM(messages);
+  }
+
+  /** Convert OpenAI-style messages + tools to Anthropic Messages API and translate response back */
+  private callAnthropicLLM(messages: Message[]): Promise<ChatResponse> {
+    return new Promise((resolve, reject) => {
+      // Extract system message
+      const systemMessages = messages.filter(m => m.role === 'system');
+      const systemText = systemMessages.map(m => m.content ?? '').join('\n');
+
+      // Convert non-system messages to Anthropic format
+      const anthropicMessages: Array<Record<string, unknown>> = [];
+      for (const msg of messages) {
+        if (msg.role === 'system') continue;
+
+        if (msg.role === 'user') {
+          anthropicMessages.push({ role: 'user', content: msg.content ?? '' });
+        } else if (msg.role === 'assistant') {
+          const content: Array<Record<string, unknown>> = [];
+          if (msg.content) {
+            content.push({ type: 'text', text: msg.content });
+          }
+          if (msg.tool_calls) {
+            for (const tc of msg.tool_calls) {
+              let parsedInput: Record<string, unknown> = {};
+              try { parsedInput = JSON.parse(tc.function.arguments); } catch {}
+              content.push({
+                type: 'tool_use',
+                id: tc.id,
+                name: tc.function.name,
+                input: parsedInput,
+              });
+            }
+          }
+          if (content.length > 0) {
+            anthropicMessages.push({ role: 'assistant', content });
+          }
+        } else if (msg.role === 'tool') {
+          anthropicMessages.push({
+            role: 'user',
+            content: [{
+              type: 'tool_result',
+              tool_use_id: msg.tool_call_id,
+              content: msg.content ?? '',
+            }],
+          });
+        }
+      }
+
+      // Convert OpenAI tool schemas to Anthropic format
+      const anthropicTools = TOOLS.map(t => ({
+        name: t.function.name,
+        description: t.function.description,
+        input_schema: t.function.parameters,
+      }));
+
+      const body = JSON.stringify({
+        model: this.anthropicModel,
+        max_tokens: 4096,
+        system: systemText,
+        messages: anthropicMessages,
+        tools: anthropicTools,
+        tool_choice: { type: 'auto' },
+      });
+
+      const reqOptions: https.RequestOptions = {
+        hostname: 'api.anthropic.com',
+        port: 443,
+        path: '/v1/messages',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          'x-api-key': process.env['ANTHROPIC_API_KEY']!,
+          'anthropic-version': '2023-06-01',
+        },
+      };
+
+      const req = https.request(reqOptions, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        res.on('end', () => {
+          try {
+            const anthropicResp = JSON.parse(data) as Record<string, unknown>;
+
+            if (anthropicResp['error']) {
+              const err = anthropicResp['error'] as Record<string, string>;
+              resolve({ choices: [], error: { message: err['message'] ?? 'Anthropic API error' } });
+              return;
+            }
+
+            // Translate Anthropic response to OpenAI ChatResponse format
+            const content = anthropicResp['content'] as Array<Record<string, unknown>> ?? [];
+            const stopReason = anthropicResp['stop_reason'] as string;
+
+            let textContent: string | null = null;
+            const toolCalls: ToolCall[] = [];
+
+            for (const block of content) {
+              if (block['type'] === 'text') {
+                textContent = block['text'] as string;
+              } else if (block['type'] === 'tool_use') {
+                toolCalls.push({
+                  id: block['id'] as string,
+                  type: 'function',
+                  function: {
+                    name: block['name'] as string,
+                    arguments: JSON.stringify(block['input']),
+                  },
+                });
+              }
+            }
+
+            const choice: ChatChoice = {
+              message: {
+                role: 'assistant',
+                content: textContent,
+                tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+              },
+              finish_reason: stopReason === 'tool_use' ? 'tool_calls' : 'stop',
+            };
+
+            resolve({ choices: [choice] });
+          } catch {
+            reject(new Error(`Failed to parse Anthropic response (status ${res.statusCode}): ${data.slice(0, 200)}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.setTimeout(120000, () => {
+        req.destroy();
+        reject(new Error('Anthropic LLM request timed out after 120s'));
+      });
+      req.write(body);
+      req.end();
+    });
+  }
+
+  private callOpenAILLM(messages: Message[]): Promise<ChatResponse> {
     return new Promise((resolve, reject) => {
       const body = JSON.stringify({
         model: this.model,
