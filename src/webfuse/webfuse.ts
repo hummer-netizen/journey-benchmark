@@ -254,7 +254,10 @@ export class WebfuseProvider implements AutomationProvider {
       },
       fill: async (value: string) => {
         const target = await resolveTarget(selector);
-        return api.type(sessionId, target, value, { overwrite: true });
+        await api.type(sessionId, target, value, { overwrite: true });
+        // Press Tab to trigger change/blur events
+        await api.keyPress(sessionId, target, 'Tab');
+        await sleep(300);
       },
       type: async (text: string) => {
         const target = await resolveTarget(selector);
@@ -312,13 +315,56 @@ export class WebfuseProvider implements AutomationProvider {
       content: () => api.domSnapshot(sessionId, { webfuseIDs: true }),
       screenshot: (_options?: Record<string, unknown>) => api.guiSnapshot(sessionId),
 
-      click: async (selector: string, _options?: Record<string, unknown>) => {
+      click: async (selector: string, options?: Record<string, unknown>) => {
+        const target = await resolveTarget(selector);
+        const clickOpts: Record<string, unknown> = {};
+        if (options?.['button'] === 'right') clickOpts['button'] = 'right';
+        console.log(`  [Webfuse/click] ${selector} → target: ${target}${clickOpts['button'] ? ' (right)' : ''}`);
+        await api.click(sessionId, target, Object.keys(clickOpts).length > 0 ? clickOpts : undefined);
+        await sleep(500);
+      },
+      fill: async (selector: string, value: string, _options?: Record<string, unknown>) => {
         const target = await resolveTarget(selector);
         await api.click(sessionId, target);
+        await sleep(500);
+
+        // Detect date inputs and convert ISO format to keyboard entry format
+        // type=date inputs expect keyboard entry as MMDDYYYY (US) without separators
+        const isDateInput = await (async () => {
+          try {
+            const dom = await getDomWithWfIds();
+            // Check if element has type="date"
+            const selectorId = selector.match(/#([\w-]+)/)?.[1];
+            if (selectorId) {
+              return dom.includes(`id="${selectorId}"`) && dom.includes('type="date"');
+            }
+            return false;
+          } catch { return false; }
+        })();
+
+        if (isDateInput && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          // For date inputs: type each segment (MM, DD, YYYY) with Tab between them
+          // This works with Chrome's segmented date input fields
+          const [yyyy, mm, dd] = value.split('-');
+          console.log(`  [Webfuse/fill] Date input detected, entering: ${mm}/${dd}/${yyyy}`);
+          // Click to focus and position cursor at month segment
+          await api.click(sessionId, target);
+          await sleep(300);
+          // Select all to clear existing value
+          await api.keyPress(sessionId, target, 'Control+a');
+          await sleep(200);
+          // Type the full date as MMDDYYYY — Chrome's date input auto-advances segments
+          const dateStr = `${mm}${dd}${yyyy}`;
+          await api.type(sessionId, target, dateStr, { overwrite: false });
+          await sleep(300);
+          // Tab out to trigger change/blur events
+          await api.keyPress(sessionId, target, 'Tab');
+        } else {
+          await api.type(sessionId, target, value, { overwrite: true });
+          // Press Tab after fill to trigger change/blur events
+          await api.keyPress(sessionId, target, 'Tab');
+        }
         await sleep(300);
-      },
-      fill: async (selector: string, value: string, _options?: Record<string, unknown>) => { const target = await resolveTarget(selector); await api.click(sessionId, target); await sleep(500);
-        await api.type(sessionId, target, value, { overwrite: true });
       },
       type: async (selector: string, text: string, _options?: Record<string, unknown>) => {
         const target = await resolveTarget(selector);
@@ -351,9 +397,15 @@ export class WebfuseProvider implements AutomationProvider {
         await api.click(sessionId, target);
       },
       dispatchEvent: async (selector: string, type: string) => {
+        const target = await resolveTarget(selector);
         if (type === 'click') {
-          const target = await resolveTarget(selector);
           await api.click(sessionId, target);
+        } else if (type === 'change' || type === 'input' || type === 'blur') {
+          // Trigger change/input by clicking the element and pressing Tab to blur
+          await api.click(sessionId, target);
+          await sleep(200);
+          await api.keyPress(sessionId, target, 'Tab');
+          await sleep(200);
         }
       },
 
@@ -367,8 +419,24 @@ export class WebfuseProvider implements AutomationProvider {
         return Array.from({ length: count }, (_, i) => makeHandle(`${selector}:nth-of-type(${i + 1})`));
       },
       $eval: async (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
-        void fn; void args;
-        return extractText(await getDomWithWfIds(), selector);
+        const dom = await getDomWithWfIds();
+        // Try to evaluate common patterns by inspecting the function source
+        const fnStr = fn.toString();
+        // classList.contains('X') pattern
+        const classMatch = fnStr.match(/classList\.contains\(['"]([^'"]+)['"]\)/);
+        if (classMatch) {
+          const cls = classMatch[1]!;
+          // Check if the element matching selector has the class
+          const idM = selector.match(/#([\w-]+)/);
+          if (idM) {
+            const pattern = new RegExp(`id="${idM[1]}"[^>]*class="[^"]*\\b${cls}\\b`, 'i');
+            const pattern2 = new RegExp(`class="[^"]*\\b${cls}\\b[^"]*"[^>]*id="${idM[1]}"`, 'i');
+            return pattern.test(dom) || pattern2.test(dom);
+          }
+          return dom.includes(`class="`) && new RegExp(`\\b${cls}\\b`).test(dom);
+        }
+        void args;
+        return extractText(dom, selector);
       },
       $$eval: async (selector: string, fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
         void fn; void args;
@@ -386,13 +454,36 @@ export class WebfuseProvider implements AutomationProvider {
       waitForSelector: async (selector: string, options?: Record<string, unknown>) => {
         const timeout = (options?.['timeout'] as number | undefined) ?? 30000;
         const deadline = Date.now() + timeout;
+        let polls = 0;
+        // First check immediately
+        try {
+          const dom = await getDomWithWfIds();
+          polls++;
+          if (selectorIn(dom, selector)) return makeHandle(selector);
+          // Debug: show nearby DOM for the selector being waited on
+          const idM = selector.match(/#([\w-]+)/);
+          if (idM) {
+            const idx = dom.indexOf(`id="${idM[1]}"`);
+            if (idx >= 0) console.log(`  [waitForSelector] ${selector} poll#${polls}: tag=${dom.substring(idx-5, idx+80)}`);
+          }
+        } catch { /* retry */ }
+        // Then poll with shorter intervals
         while (Date.now() < deadline) {
+          await sleep(500);
           try {
             const dom = await getDomWithWfIds();
+            polls++;
             if (selectorIn(dom, selector)) return makeHandle(selector);
+            if (polls <= 3) {
+              const idM = selector.match(/#([\w-]+)/);
+              if (idM) {
+                const idx = dom.indexOf(`id="${idM[1]}"`);
+                if (idx >= 0) console.log(`  [waitForSelector] ${selector} poll#${polls}: tag=${dom.substring(idx-5, idx+80)}`);
+              }
+            }
           } catch { /* retry */ }
-          await sleep(1000);
         }
+        console.log(`  [waitForSelector] TIMEOUT ${selector} after ${polls} polls`);
         throw new Error(`Timeout waiting for selector: ${selector}`);
       },
       waitForURL: async (pattern: string | RegExp, options?: Record<string, unknown>) => {
@@ -601,8 +692,26 @@ function selectorIn(html: string, selector: string): boolean {
   const parts = clean.split(/\s+/);
   const last = parts[parts.length - 1] ?? clean;
 
-  const justId = last.match(/^#([\w-]+)/);
-  if (justId) return html.includes(`id="${justId[1]}"`);
+  // Handle compound selectors like #id.class — check both parts
+  const idMatch = last.match(/^#([\w-]+)/);
+  const classMatches = [...last.matchAll(/\.([\w-]+)/g)].map(m => m[1]!);
+
+  if (idMatch && classMatches.length > 0) {
+    // Compound: must find element with both id and all classes
+    const id = idMatch[1]!;
+    // Find the tag containing this id
+    const tagPattern = new RegExp(`<[^>]*id="${id}"[^>]*>`, 'i');
+    const tagMatch = html.match(tagPattern);
+    if (!tagMatch) return false;
+    const tag = tagMatch[0];
+    // Check all required classes are present in the tag's class attribute
+    return classMatches.every(cls => {
+      const clsRegex = new RegExp(`class="[^"]*\\b${cls}\\b`, 'i');
+      return clsRegex.test(tag);
+    });
+  }
+
+  if (idMatch) return html.includes(`id="${idMatch[1]}"`);
   const clsM = last.match(/\.([\w-]+)/);
   if (clsM) return html.includes(clsM[1]!);
   const attrM = last.match(/\[([^\]="]+)="([^"]+)"\]/);

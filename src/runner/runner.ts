@@ -40,18 +40,26 @@ export class BenchmarkRunner {
     const startedAt = new Date().toISOString();
     const journeyResults: JourneyResult[] = [];
 
-    // Check target reachability upfront
-    const reachable = await isReachable(this.options.baseUrl);
-    if (!reachable) {
-      console.warn(`Warning: Target ${this.options.baseUrl} is not reachable. Journeys will be recorded as errors.`);
+    // Cache reachability results per URL to avoid redundant checks
+    const reachabilityCache = new Map<string, boolean>();
+    async function checkReachable(url: string): Promise<boolean> {
+      if (reachabilityCache.has(url)) return reachabilityCache.get(url)!;
+      const ok = await isReachable(url);
+      reachabilityCache.set(url, ok);
+      return ok;
     }
 
     for (const journey of this.options.journeys) {
       console.log(`\n> Running ${journey.id}: ${journey.name}`);
 
+      // Determine the effective base URL for this journey
+      const journeyBaseUrl = (journey as any).config?.baseUrl ?? this.options.baseUrl;
+      const reachable = await checkReachable(journeyBaseUrl);
+
       let result: JourneyResult;
 
       if (!reachable) {
+        console.warn(`  Warning: Target ${journeyBaseUrl} is not reachable.`);
         // Graceful degradation: record error without attempting to run
         result = {
           journeyId: journey.id,
@@ -62,7 +70,7 @@ export class BenchmarkRunner {
           stepsTotal: journey.steps.length,
           stepsCompleted: 0,
           steps: [],
-          errorMessage: `Target unreachable: ${this.options.baseUrl}`,
+          errorMessage: `Target unreachable: ${journeyBaseUrl}`,
           startedAt: new Date().toISOString(),
           finishedAt: new Date().toISOString(),
         };

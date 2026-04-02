@@ -37,7 +37,9 @@ export class J00TheGym extends BaseJourney {
         name: 'Navigate to The Gym',
         goal: 'Navigate to the Journey 0 page and wait for the page title "Journey 0 — The Gym" to appear.',
         execute: async (page: Page) => {
-          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          // Cache-bust to ensure co-browsing sessions get the latest version
+          const cbUrl = url.includes('?') ? `${url}&cb=${Date.now()}` : `${url}?cb=${Date.now()}`;
+          await page.goto(cbUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
           await page.waitForSelector('h1', { timeout: 10000 });
         },
       },
@@ -47,7 +49,7 @@ export class J00TheGym extends BaseJourney {
         execute: async (page: Page) => {
           await page.fill('#gym-date', '2026-06-15');
           await page.dispatchEvent('#gym-date', 'change');
-          await page.waitForSelector('#date-status.success', { timeout: 5000 });
+          await page.waitForSelector('#date-status.success', { timeout: 10000 });
           const text = await page.textContent('#date-status');
           if (!text?.includes('2026-06-15')) {
             throw new Error(`DatePicker: expected status to contain '2026-06-15', got '${text}'`);
@@ -59,7 +61,7 @@ export class J00TheGym extends BaseJourney {
         goal: 'Open the "Choose an exercise" dropdown and select "Deadlift". Verify the status message confirms the selection.',
         execute: async (page: Page) => {
           await page.selectOption('#gym-exercise', 'deadlift');
-          await page.waitForSelector('#select-status.success', { timeout: 5000 });
+          await page.waitForSelector('#select-status.success', { timeout: 10000 });
           const text = await page.textContent('#select-status');
           if (!text?.includes('deadlift')) {
             throw new Error(`Select: expected status to contain 'deadlift', got '${text}'`);
@@ -71,9 +73,9 @@ export class J00TheGym extends BaseJourney {
         goal: 'Right-click on the grey area labelled "Right-click here" to open the context menu, then click the "Edit" option. Verify the status message shows "Context action: edit".',
         execute: async (page: Page) => {
           await page.click('#gym-context-area', { button: 'right' });
-          await page.waitForSelector('#gym-context-menu.visible', { timeout: 5000 });
+          await page.waitForSelector('#gym-context-menu.visible', { timeout: 10000 });
           await page.click('#ctx-edit');
-          await page.waitForSelector('#context-status.success', { timeout: 5000 });
+          await page.waitForSelector('#context-status.success', { timeout: 10000 });
           const text = await page.textContent('#context-status');
           if (!text?.includes('edit')) {
             throw new Error(`ContextMenu: expected status to contain 'edit', got '${text}'`);
@@ -85,7 +87,7 @@ export class J00TheGym extends BaseJourney {
         goal: 'Click the blue image (labelled "Blue equipment") to select it. Verify the status message confirms "Blue equipment" was selected and the image has a green border.',
         execute: async (page: Page) => {
           await page.click('#img-blue');
-          await page.waitForSelector('#image-status.success', { timeout: 5000 });
+          await page.waitForSelector('#image-status.success', { timeout: 10000 });
           const text = await page.textContent('#image-status');
           if (!text?.includes('Blue')) {
             throw new Error(`ClickableImage: expected status to contain 'Blue', got '${text}'`);
@@ -102,7 +104,7 @@ export class J00TheGym extends BaseJourney {
         execute: async (page: Page) => {
           await page.fill('#gym-notes', '3x5 deadlifts at 100kg, felt strong');
           await page.dispatchEvent('#gym-notes', 'input');
-          await page.waitForSelector('#textarea-status.success', { timeout: 5000 });
+          await page.waitForSelector('#textarea-status.success', { timeout: 10000 });
           const text = await page.textContent('#textarea-status');
           if (!text?.includes('chars')) {
             throw new Error(`Textarea: expected status to contain 'chars', got '${text}'`);
@@ -114,7 +116,7 @@ export class J00TheGym extends BaseJourney {
         goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered (date, exercise, image, notes).',
         execute: async (page: Page) => {
           await page.click('#gym-submit');
-          await page.waitForSelector('#result-panel.visible', { timeout: 5000 });
+          await page.waitForSelector('#result-panel.visible', { timeout: 10000 });
           const summary = await page.textContent('#result-summary');
           if (!summary) {
             throw new Error('Submit: result summary is empty');

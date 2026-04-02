@@ -756,7 +756,7 @@ export class WebfuseAgent {
         case 'navigate': {
           const url = args['url'] as string;
           if (url.startsWith('javascript:')) {
-            return 'Error: javascript: URLs are not supported. Use fill, type, click, select tools instead.';
+            return 'Error: javascript: URLs are not supported. Use fill, type, click, select, or set_value tools instead.';
           }
           await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await this.page.waitForTimeout(1000);

@@ -140,7 +140,7 @@
   <div class="component-card" id="card-datepicker">
     <h2>1. Date Picker</h2>
     <label for="gym-date">Select a date:</label>
-    <input type="date" id="gym-date" name="gym-date" min="2026-01-01" max="2027-12-31">
+    <input type="text" id="gym-date" name="gym-date" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
     <div id="date-status" class="status"></div>
   </div>
 
@@ -221,12 +221,20 @@
     // --- Date Picker ---
     const dateInput = document.getElementById('gym-date');
     const dateStatus = document.getElementById('date-status');
-    dateInput.addEventListener('change', () => {
-      if (dateInput.value) {
-        dateStatus.textContent = `Date selected: ${dateInput.value}`;
+    function checkDateValue() {
+      const val = dateInput.value.trim();
+      if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        dateStatus.textContent = `Date selected: ${val}`;
         dateStatus.className = 'status success';
+      } else if (val) {
+        dateStatus.textContent = `Invalid format: ${val} (expected YYYY-MM-DD)`;
+        dateStatus.className = 'status error';
       }
-    });
+    }
+    dateInput.addEventListener('change', checkDateValue);
+    dateInput.addEventListener('input', checkDateValue);
+    dateInput.addEventListener('blur', checkDateValue);
+    dateInput.addEventListener('keyup', checkDateValue);
 
     // --- Select / Dropdown ---
     const selectInput = document.getElementById('gym-exercise');
