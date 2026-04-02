@@ -86,15 +86,16 @@ describe('AutomationApi', () => {
     expect(args['target']).toBe('#submit-btn');
   });
 
-  it('sends act_type without overwrite (stripped per Webfuse API)', async () => {
+  it('sends act_type with overwrite nested inside options', async () => {
     await api.type('sABC123', '#email', 'test@example.com', { overwrite: true });
     const req = JSON.parse(api.calls[0]!.body) as Record<string, unknown>;
     const params = req['params'] as Record<string, unknown>;
     expect(params['name']).toBe('act_type');
     const args = params['arguments'] as Record<string, unknown>;
     expect(args['text']).toBe('test@example.com');
-    // overwrite is intentionally stripped — act_type does not support it
+    // overwrite is nested inside options, not at top level
     expect(args['overwrite']).toBeUndefined();
+    expect(args['options']).toEqual({ overwrite: true });
   });
 
   it('sends act_keyPress', async () => {
@@ -116,13 +117,15 @@ describe('AutomationApi', () => {
     expect(args['target']).toBe('body');
   });
 
-  it('sends see_domSnapshot with webfuseIDs option', async () => {
+  it('sends see_domSnapshot with webfuseIDs nested inside options', async () => {
     await api.domSnapshot('sABC123', { webfuseIDs: true });
     const req = JSON.parse(api.calls[0]!.body) as Record<string, unknown>;
     const params = req['params'] as Record<string, unknown>;
     expect(params['name']).toBe('see_domSnapshot');
     const args = params['arguments'] as Record<string, unknown>;
-    expect(args['webfuseIDs']).toBe(true);
+    // webfuseIDs is nested inside options, not at top level
+    expect(args['webfuseIDs']).toBeUndefined();
+    expect(args['options']).toEqual({ webfuseIDs: true });
   });
 
   it('parses pageInfo JSON response', async () => {

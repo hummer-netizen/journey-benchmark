@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { RunResult } from '../types.js';
+import type { ReproFile } from '../repro/index.js';
 import { successRate, averagePartialCompletion, totalExecutionTime, averageJourneyTime } from '../metrics/compute.js';
 
 /** Generate a JSON report file */
@@ -13,17 +14,17 @@ export function generateJsonReport(result: RunResult, outputDir: string): string
   return filepath;
 }
 
-/** Generate a Markdown report file */
-export function generateMarkdownReport(result: RunResult, outputDir: string): string {
+/** Generate a Markdown report file (optionally with repro file references) */
+export function generateMarkdownReport(result: RunResult, outputDir: string, repros?: ReproFile[]): string {
   fs.mkdirSync(outputDir, { recursive: true });
   const timestamp = result.startedAt.replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
   const filename = `report_${timestamp}.md`;
   const filepath = path.join(outputDir, filename);
-  fs.writeFileSync(filepath, buildMarkdown(result), 'utf-8');
+  fs.writeFileSync(filepath, buildMarkdown(result, repros), 'utf-8');
   return filepath;
 }
 
-function buildMarkdown(result: RunResult): string {
+function buildMarkdown(result: RunResult, repros?: ReproFile[]): string {
   const sr = (successRate(result.journeys) * 100).toFixed(1);
   const apc = (averagePartialCompletion(result.journeys) * 100).toFixed(1);
   const total = totalExecutionTime(result);
@@ -77,6 +78,17 @@ function buildMarkdown(result: RunResult): string {
       }
       md += '\n';
     }
+  }
+
+  // Repro files section
+  if (repros && repros.length > 0) {
+    md += `## Reproduction Cases\n\n`;
+    md += `| Journey | Failed Step | Repro File |\n|---------|-------------|------------|\n`;
+    for (const repro of repros) {
+      const relPath = path.relative(process.cwd(), repro.filePath);
+      md += `| ${repro.journeyId}: ${repro.journeyName} | ${repro.failedStep} | \`${relPath}\` |\n`;
+    }
+    md += '\n';
   }
 
   return md;
