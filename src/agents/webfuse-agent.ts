@@ -49,11 +49,12 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'click',
-      description: 'Click an element on the page using a CSS selector or accessible text',
+      description: 'Click an element on the page using a CSS selector. Use button="right" for right-click (context menu).',
       parameters: {
         type: 'object',
         properties: {
           selector: { type: 'string', description: 'CSS selector for the element to click' },
+          button: { type: 'string', enum: ['left', 'right'], description: 'Mouse button to click. Default is left. Use right for context menus.' },
         },
         required: ['selector'],
       },
@@ -245,8 +246,21 @@ export class WebfuseAgent {
           'You are a web automation agent. Given the current page accessibility tree and a goal,',
           'decide which tool to call to make progress toward that goal.',
           'Always call exactly one tool per turn. When the goal is complete, call `done`.',
-          'Use CSS selectors that are likely to be stable (ids, name attributes, roles).',
+          '',
+          'CRITICAL SELECTOR RULES:',
+          '- ALWAYS prefer #id selectors (e.g. #gym-date, #gym-exercise, #gym-context-area).',
+          '- NEVER use [source="..."] selectors — these are tree node refs, not DOM attributes.',
+          '- For date/text inputs: use `fill` with the correct #id selector.',
+          '- For <select> dropdowns: use `select` with the #id and the option value (lowercase).',
+          '- For right-click: use `click` with button="right".',
+          '- After fill/type, press Tab to trigger change events if needed.',
+          '',
           'If an action fails, try an alternative approach.',
+          'Do NOT use javascript: URLs or navigate to javascript: — they are blocked.',
+          'Do NOT try more than 3 different approaches for the same sub-task.',
+          'Focus on standard HTML form interactions: fill, select, click, press.',
+          'After each action, check the accessibility tree for status messages to verify.',
+          'When you see a success status message confirming the goal, call `done` immediately.',
         ].join(' '),
       },
       {
@@ -370,11 +384,53 @@ export class WebfuseAgent {
   // Private helpers
   // ---------------------------------------------------------------------------
 
+  /** Extract id, class, and tag info from DOM snapshot HTML for selector hints */
+  private extractIdHints(domHtml: string): string {
+    if (!domHtml) return '';
+    const hints: string[] = [];
+    // Match elements with id attributes
+    const idRegex = /<(\w+)([^>]*?)\bid=["']([^"']+)["']([^>]*?)>/gi;
+    let match;
+    while ((match = idRegex.exec(domHtml)) !== null) {
+      const tag = match[1]!;
+      const allAttrs = match[2]! + ' id="' + match[3] + '"' + match[4]!;
+      const id = match[3]!;
+      // Extract useful attributes
+      const typeMatch = allAttrs.match(/\btype=["']([^"']+)["']/);
+      const nameMatch = allAttrs.match(/\bname=["']([^"']+)["']/);
+      const ariaLabel = allAttrs.match(/\baria-label=["']([^"']+)["']/);
+      const classMatch = allAttrs.match(/\bclass=["']([^"']+)["']/);
+      const dataAction = allAttrs.match(/\bdata-action=["']([^"']+)["']/);
+      
+      let hint = `#${id} (${tag}`;
+      if (typeMatch) hint += `, type=${typeMatch[1]}`;
+      if (nameMatch) hint += `, name=${nameMatch[1]}`;
+      if (ariaLabel) hint += `, aria-label="${ariaLabel[1]}"`;
+      if (classMatch) hint += `, class="${classMatch[1].substring(0, 60)}"`;
+      if (dataAction) hint += `, data-action="${dataAction[1]}"`;
+      hint += ')';
+      hints.push(hint);
+    }
+    return hints.slice(0, 50).join('\n');
+  }
+
   private async extractAXTree(): Promise<string> {
-    // Use Automation API accessibility tree when available (WebfuseProvider path)
+    // Use Automation API accessibility tree + DOM snapshot when available (WebfuseProvider path)
     if (this.automationApi && this.sessionId) {
       try {
-        return await this.automationApi.accessibilityTree(this.sessionId);
+        const [axTree, domSnapshot] = await Promise.all([
+          this.automationApi.accessibilityTree(this.sessionId).catch(() => ''),
+          this.automationApi.domSnapshot(this.sessionId, { webfuseIDs: true }).catch(() => ''),
+        ]);
+
+        // Extract element IDs and key attributes from DOM snapshot for selector hints
+        const idHints = this.extractIdHints(domSnapshot);
+
+        let result = axTree || '(accessibility tree unavailable)';
+        if (idHints) {
+          result += '\n\n--- DOM Element IDs (use these as CSS selectors) ---\n' + idHints;
+        }
+        return result.length > 12000 ? result.slice(0, 12000) + '\n... (truncated)' : result;
       } catch {
         // fall through to page.evaluate fallback
       }
@@ -664,9 +720,10 @@ export class WebfuseAgent {
       switch (name) {
         case 'click': {
           const sel = args['selector'] as string;
-          await this.page.click(sel, { timeout: 10000 });
+          const btn = (args['button'] as string) ?? 'left';
+          await this.page.click(sel, { timeout: 10000, button: btn as 'left' | 'right' | 'middle' });
           await this.page.waitForTimeout(500);
-          return `Clicked "${sel}"`;
+          return btn === 'right' ? `Right-clicked "${sel}"` : `Clicked "${sel}"`;
         }
         case 'type': {
           const sel = args['selector'] as string;
@@ -698,6 +755,9 @@ export class WebfuseAgent {
         }
         case 'navigate': {
           const url = args['url'] as string;
+          if (url.startsWith('javascript:')) {
+            return 'Error: javascript: URLs are not supported. Use fill, type, click, select tools instead.';
+          }
           await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await this.page.waitForTimeout(1000);
           return `Navigated to "${url}"`;

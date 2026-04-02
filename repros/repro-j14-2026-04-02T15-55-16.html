@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repro: J14 — Product Comparison</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; max-width: 900px; margin: 0 auto; background: #fafafa; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    .meta { color: #666; font-size: 0.9rem; margin-bottom: 16px; }
+    .error-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .error-box h2 { color: #dc2626; font-size: 1.1rem; margin-bottom: 8px; }
+    .error-box pre { white-space: pre-wrap; font-size: 0.85rem; color: #7f1d1d; }
+    .expected-actual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .expected, .actual { padding: 12px; border-radius: 8px; font-size: 0.9rem; }
+    .expected { background: #f0fdf4; border: 1px solid #86efac; }
+    .actual { background: #fef2f2; border: 1px solid #fca5a5; }
+    .steps { margin-bottom: 16px; }
+    .steps h2 { font-size: 1.1rem; margin-bottom: 8px; }
+    .step { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+    .step:last-child { border-bottom: none; }
+    .step-num { font-weight: 600; min-width: 28px; }
+    .step-status { font-size: 0.8rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+    .step-status.passed { background: #dcfce7; color: #166534; }
+    .step-status.failed { background: #fee2e2; color: #991b1b; }
+    .step-status.pending { background: #f3f4f6; color: #6b7280; }
+    .selectors { margin-bottom: 16px; }
+    .selectors h2 { font-size: 1.1rem; margin-bottom: 8px; }
+    .selectors code { display: inline-block; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; margin: 2px 4px 2px 0; }
+    .repro-frame { width: 100%; height: 500px; border: 2px solid #d1d5db; border-radius: 8px; margin-top: 16px; }
+    .btn { display: inline-block; padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; margin-top: 12px; }
+    .btn:hover { background: #1d4ed8; }
+    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    #log { background: #1a1a2e; color: #e0e0e0; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; min-height: 100px; max-height: 300px; overflow-y: auto; margin-top: 12px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<!--
+  ============================================================
+  REPRODUCTION CASE — Surfly Co-browsing Compatibility
+  ============================================================
+
+  Journey:       J14 — Product Comparison
+  Failed Step:   Step 0
+  Error:         Target unreachable: https://webarena-shop.webfuse.it/
+  Generated:     2026-04-02T15:55:16.722Z
+  Target URL:    https://webarena-shop.webfuse.it/
+  Provider:      WebfuseProvider (Surfly co-browsing proxy)
+
+  EXPECTED BEHAVIOUR:
+    All 8 steps complete successfully when run via
+    DirectProvider (Playwright headless, no proxy). The journey passes
+    100% on DirectProvider with 0% flakiness across 5 runs.
+
+  ACTUAL BEHAVIOUR (via WebfuseProvider / Surfly proxy):
+    Step 0 fails with: "Target unreachable: https://webarena-shop.webfuse.it/"
+    0 of 8 steps completed before failure.
+
+  ACTION SEQUENCE (up to failure):
+
+
+  SELECTORS INVOLVED:
+    lamp
+    .price-box
+    .swatch-attribute.size
+    .swatch-attribute.color
+    .product-custom-option
+    options["]
+    .message-success
+    .cart.item
+    .cart__item
+
+  HOW TO REPRODUCE:
+    1. Open this file in a browser
+    2. Click "Load Target Page" to load the target URL in the iframe
+    3. Click "Run Repro Steps" to execute the action sequence
+    4. Observe step 0 failing
+    5. To test with Surfly: start a co-browsing session on the target URL
+       and run the same sequence through the Surfly proxy
+
+  NOTE: This repro uses an iframe for the target page. Cross-origin
+  restrictions may apply. For full reproduction, serve this file from
+  the same origin or use the Surfly co-browsing proxy.
+  ============================================================
+-->
+
+<h1>🔬 Repro: J14 — Product Comparison</h1>
+<p class="meta">
+  Generated 2026-04-02T15:55:16.722Z · Target: <code>https://webarena-shop.webfuse.it/</code> · Provider: WebfuseProvider
+</p>
+
+<div class="error-box">
+  <h2>❌ Failure at Step 0</h2>
+  <pre>Target unreachable: https://webarena-shop.webfuse.it/</pre>
+</div>
+
+<div class="expected-actual">
+  <div class="expected">
+    <strong>✅ Expected</strong><br>
+    All 8 steps pass. DirectProvider: 100% pass rate, 0% flakiness.
+  </div>
+  <div class="actual">
+    <strong>❌ Actual (WebfuseProvider)</strong><br>
+    0/8 steps pass. Fails at step 0 with the error above.
+  </div>
+</div>
+
+<div class="steps">
+  <h2>Action Sequence</h2>
+  <div class="step">
+    <span class="step-num">1.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Search for products</strong>
+      <br><em>Navigate to the shop homepage, search for &#39;lamp&#39;, and verify at least 2 product results are shown.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">2.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Open first product and record details</strong>
+      <br><em>Click on the first product in the search results and note its name and price.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">3.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Return to product listing</strong>
+      <br><em>Navigate back to the search results page showing the list of products.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">4.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Open second product and record details</strong>
+      <br><em>Click on the second product in the search results and note its name and price.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">5.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Compare products and identify cheaper</strong>
+      <br><em>Compare the prices of the two recorded products and identify which one is cheaper. No browser interaction needed.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">6.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Navigate to cheaper product</strong>
+      <br><em>Return to the search results and click on the cheaper of the two products.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">7.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Add cheaper product to cart</strong>
+      <br><em>Select any required product options (size/color) if present, then click Add to Cart.</em>
+    </div>
+  </div>
+  <div class="step">
+    <span class="step-num">8.</span>
+    <span class="step-status pending">… SKIP</span>
+    <div>
+      <strong>Verify cart contains selected product</strong>
+      <br><em>Navigate to the shopping cart and verify it contains at least one item.</em>
+    </div>
+  </div>
+</div>
+
+<div class="selectors">
+  <h2>Selectors Used</h2>
+  <code>lamp</code> <code>.price-box</code> <code>.swatch-attribute.size</code> <code>.swatch-attribute.color</code> <code>.product-custom-option</code> <code>options[&quot;]</code> <code>.message-success</code> <code>.cart.item</code> <code>.cart__item</code>
+</div>
+
+<h2>Interactive Reproduction</h2>
+<p>Load the target page and run the step sequence to observe the failure.</p>
+<button class="btn" onclick="loadTarget()">Load Target Page</button>
+<button class="btn" id="run-btn" onclick="runRepro()" disabled>Run Repro Steps</button>
+<iframe id="target-frame" class="repro-frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+<div id="log">// Repro log — click "Load Target Page" to start
+</div>
+
+<script>
+  const TARGET_URL = "https://webarena-shop.webfuse.it/";
+  const STEPS = [
+
+  ];
+
+  const logEl = document.getElementById('log');
+  function log(msg) {
+    logEl.textContent += new Date().toISOString().slice(11, 23) + ' ' + msg + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function loadTarget() {
+    log('Loading target: ' + TARGET_URL);
+    const frame = document.getElementById('target-frame');
+    frame.src = TARGET_URL;
+    frame.onload = () => {
+      log('Target loaded.');
+      document.getElementById('run-btn').disabled = false;
+    };
+    frame.onerror = () => log('ERROR: Failed to load target (cross-origin?)');
+  }
+
+  async function runRepro() {
+    document.getElementById('run-btn').disabled = true;
+    log('--- Starting repro sequence ---');
+
+    const frame = document.getElementById('target-frame');
+    let doc;
+    try {
+      doc = frame.contentDocument || frame.contentWindow?.document;
+    } catch (e) {
+      log('ERROR: Cannot access iframe document (cross-origin). Open target URL directly or use same-origin server.');
+      return;
+    }
+
+    for (const step of STEPS) {
+      log('Step ' + step.index + ': ' + step.name + ' [' + step.status + ']');
+      log('  Goal: ' + step.goal);
+      if (step.status === 'FAILED') {
+        log('  >>> THIS IS THE FAILING STEP <<<');
+        log('  Error: Target unreachable: https://webarena-shop.webfuse.it/');
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    log('--- Repro sequence complete ---');
+    log('To reproduce with Surfly: start a co-browsing session on ' + TARGET_URL);
+    log('and execute the same action sequence through the Surfly proxy.');
+  }
+</script>
+</body>
+</html>
