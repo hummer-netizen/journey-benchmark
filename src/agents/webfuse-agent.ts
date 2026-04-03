@@ -137,6 +137,20 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'hover',
+      description: 'Hover over an element to trigger CSS :hover states, tooltips, or dropdown menus. Uses mouseMove to simulate a real mouse hover.',
+      parameters: {
+        type: 'object',
+        properties: {
+          selector: { type: 'string', description: 'CSS selector for the element to hover over' },
+        },
+        required: ['selector'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'scroll',
       description: 'Scroll the page up or down',
       parameters: {
@@ -253,6 +267,8 @@ export class WebfuseAgent {
           '- For date/text inputs: use `fill` with the correct #id selector.',
           '- For <select> dropdowns: use `select` with the #id and the option value (lowercase).',
           '- For right-click: use `click` with button="right".',
+          '- For hover effects (tooltips, CSS :hover reveals): use `hover` with the element selector.',
+          '- For date inputs with type="text" and placeholder YYYY-MM-DD: use `fill` with #id selector directly.',
           '- After fill/type, press Tab to trigger change events if needed.',
           '',
           'If an action fails, try an alternative approach.',
@@ -774,6 +790,16 @@ export class WebfuseAgent {
           }
           await this.page.waitForTimeout(300);
           return `Scrolled ${direction} by ${amount}px`;
+        }
+        case 'hover': {
+          const sel = args['selector'] as string;
+          if (this.automationApi && this.sessionId) {
+            await this.automationApi.mouseMove(this.sessionId, sel);
+          } else {
+            await this.page.hover(sel, { timeout: 10000 });
+          }
+          await this.page.waitForTimeout(500);
+          return `Hovered over "${sel}"`;
         }
         case 'wait': {
           const ms = args['ms'] as number;
