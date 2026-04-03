@@ -333,10 +333,12 @@ export class WebfuseProvider implements AutomationProvider {
         const isDateInput = await (async () => {
           try {
             const dom = await getDomWithWfIds();
-            // Check if element has type="date"
+            // Check if the specific element has type="date" (match the element tag, not just anywhere in DOM)
             const selectorId = selector.match(/#([\w-]+)/)?.[1];
             if (selectorId) {
-              return dom.includes(`id="${selectorId}"`) && dom.includes('type="date"');
+              // Match the actual input element with both this id AND type="date"
+              const elementRegex = new RegExp(`<input[^>]*id="${selectorId}"[^>]*type="date"[^>]*>|<input[^>]*type="date"[^>]*id="${selectorId}"[^>]*>`);
+              return elementRegex.test(dom);
             }
             return false;
           } catch { return false; }
