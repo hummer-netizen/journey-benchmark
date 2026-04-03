@@ -112,8 +112,56 @@ export class J00TheGym extends BaseJourney {
         },
       },
       {
+        name: 'HoverState — Reveal and click',
+        goal: 'Hover over the grey box that says "Hover over me" to reveal a hidden message and a button. Then click the "Claim Reward" button. Verify the status message shows "Reward claimed!".',
+        execute: async (page: Page) => {
+          await page.hover('#gym-hover-area');
+          await page.waitForSelector('#hover-reveal', { state: 'visible', timeout: 10000 });
+          await page.click('#hover-action-btn');
+          await page.waitForSelector('#hover-status.success', { timeout: 10000 });
+          const text = await page.textContent('#hover-status');
+          if (!text?.includes('claimed')) {
+            throw new Error(`HoverState: expected status to contain "claimed", got "${text}"`);
+          }
+        },
+      },
+      {
+        name: 'ShadowDOM — Enter membership ID',
+        goal: 'Find the Shadow DOM component with a dashed border. Inside it there is an input labelled "Membership ID" and a "Verify" button. Type "GYM-1234" into the input and click "Verify". Verify the status message below the component shows "Membership verified: GYM-1234".',
+        execute: async (page: Page) => {
+          const shadowInput = await page.evaluateHandle(() => {
+            const host = document.querySelector('#gym-shadow-host');
+            return host?.shadowRoot?.querySelector('#shadow-member-id');
+          });
+          await (shadowInput as any).fill('GYM-1234');
+          const shadowBtn = await page.evaluateHandle(() => {
+            const host = document.querySelector('#gym-shadow-host');
+            return host?.shadowRoot?.querySelector('#shadow-verify-btn');
+          });
+          await (shadowBtn as any).click();
+          await page.waitForSelector('#shadow-status.success', { timeout: 10000 });
+          const text = await page.textContent('#shadow-status');
+          if (!text?.includes('GYM-1234')) {
+            throw new Error(`ShadowDOM: expected status to contain "GYM-1234", got "${text}"`);
+          }
+        },
+      },
+      {
+        name: 'NativeDate — Select a date with type=date',
+        goal: 'Find the native HTML5 date input labelled "Select workout date" (it has type="date"). Set it to 2026-07-20. Verify the status message shows the selected date.',
+        execute: async (page: Page) => {
+          await page.fill('#gym-native-date', '2026-07-20');
+          await page.dispatchEvent('#gym-native-date', 'change');
+          await page.waitForSelector('#native-date-status.success', { timeout: 10000 });
+          const text = await page.textContent('#native-date-status');
+          if (!text?.includes('2026-07-20')) {
+            throw new Error(`NativeDate: expected status to contain "2026-07-20", got "${text}"`);
+          }
+        },
+      },
+      {
         name: 'Submit — Verify all components',
-        goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered (date, exercise, image, notes).',
+        goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered (date, exercise, image, notes, hover reward, shadow membership ID, native date).',
         execute: async (page: Page) => {
           await page.click('#gym-submit');
           await page.waitForSelector('#result-panel.visible', { timeout: 10000 });
@@ -127,6 +175,9 @@ export class J00TheGym extends BaseJourney {
           if (parsed.exercise === '(not set)') throw new Error('Submit: exercise not recorded');
           if (parsed.selectedImage === '(none)') throw new Error('Submit: image not recorded');
           if (parsed.notes === '(empty)') throw new Error('Submit: notes not recorded');
+          if (parsed.hoverReward === '(not claimed)') throw new Error('Submit: hover reward not claimed');
+          if (parsed.shadowMemberId === '(not set)') throw new Error('Submit: shadow member ID not recorded');
+          if (parsed.nativeDate === '(not set)') throw new Error('Submit: native date not recorded');
         },
       },
     ];

@@ -62,6 +62,10 @@
     .status.success { display: block; background: #d1e7dd; color: #0f5132; }
     .status.error { display: block; background: #f8d7da; color: #842029; }
 
+    /* Hover state */
+    #gym-hover-area:hover #hover-hint { display: none; }
+    #gym-hover-area:hover #hover-reveal { display: block !important; }
+
     /* Context menu */
     .context-area {
       width: 100%;
@@ -204,6 +208,37 @@
     <div id="textarea-status" class="status"></div>
   </div>
 
+  <!-- 6. Hover State -->
+  <div class="component-card" id="card-hover">
+    <h2>6. Hover State</h2>
+    <p>Hover over the box below to reveal a hidden message, then click the revealed button:</p>
+    <div id="gym-hover-area" style="width:300px;height:120px;background:#e9ecef;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;">
+      <span id="hover-hint">Hover over me</span>
+      <div id="hover-reveal" style="display:none;text-align:center;">
+        <p style="margin:0 0 8px 0;color:#198754;font-weight:600;">Secret revealed!</p>
+        <button id="hover-action-btn" type="button" style="font-size:0.9rem;padding:0.4rem 1rem;">Claim Reward</button>
+      </div>
+    </div>
+    <div id="hover-status" class="status"></div>
+  </div>
+
+  <!-- 7. Shadow DOM -->
+  <div class="component-card" id="card-shadow">
+    <h2>7. Shadow DOM</h2>
+    <p>Type your membership ID into the shadow DOM input and click the verify button:</p>
+    <div id="gym-shadow-host"></div>
+    <div id="shadow-status" class="status"></div>
+  </div>
+
+  <!-- 8. Native Date Input -->
+  <div class="component-card" id="card-native-date">
+    <h2>8. Native Date Input</h2>
+    <p>This is a real <code>type="date"</code> HTML5 input (no workaround):</p>
+    <label for="gym-native-date">Select workout date:</label>
+    <input type="date" id="gym-native-date" name="gym-native-date" min="2026-01-01" max="2027-12-31">
+    <div id="native-date-status" class="status"></div>
+  </div>
+
   <!-- Submit all -->
   <div class="component-card">
     <h2>Submit Workout</h2>
@@ -302,6 +337,59 @@
       }
     });
 
+    // --- Hover State ---
+    const hoverActionBtn = document.getElementById("hover-action-btn");
+    const hoverStatus = document.getElementById("hover-status");
+    hoverActionBtn.addEventListener("click", () => {
+      hoverStatus.textContent = "Reward claimed!";
+      hoverStatus.className = "status success";
+    });
+
+    // --- Shadow DOM ---
+    const shadowHost = document.getElementById("gym-shadow-host");
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+    shadowRoot.innerHTML = `
+      <style>
+        :host { display: block; }
+        .shadow-inner { padding: 12px; background: #f8f9fa; border: 1px dashed #6c757d; border-radius: 4px; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        input { font-size: 1rem; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; width: 100%; max-width: 300px; }
+        button { font-size: 0.9rem; padding: 0.4rem 1rem; border: none; border-radius: 4px; cursor: pointer; background: #0d6efd; color: #fff; margin-top: 0.5rem; }
+        button:hover { background: #0b5ed7; }
+      </style>
+      <div class="shadow-inner">
+        <label for="shadow-member-id">Membership ID:</label>
+        <input type="text" id="shadow-member-id" placeholder="e.g. GYM-1234" autocomplete="off">
+        <button type="button" id="shadow-verify-btn">Verify</button>
+      </div>
+    `;
+    const shadowStatus = document.getElementById("shadow-status");
+    const shadowInput = shadowRoot.querySelector("#shadow-member-id");
+    const shadowVerifyBtn = shadowRoot.querySelector("#shadow-verify-btn");
+    shadowVerifyBtn.addEventListener("click", () => {
+      const val = shadowInput.value.trim();
+      if (val.length > 0) {
+        shadowStatus.textContent = "Membership verified: " + val;
+        shadowStatus.className = "status success";
+      } else {
+        shadowStatus.textContent = "Please enter a membership ID";
+        shadowStatus.className = "status error";
+      }
+    });
+
+    // --- Native Date Input ---
+    const nativeDateInput = document.getElementById("gym-native-date");
+    const nativeDateStatus = document.getElementById("native-date-status");
+    function checkNativeDateValue() {
+      const val = nativeDateInput.value;
+      if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        nativeDateStatus.textContent = "Native date selected: " + val;
+        nativeDateStatus.className = "status success";
+      }
+    }
+    nativeDateInput.addEventListener("change", checkNativeDateValue);
+    nativeDateInput.addEventListener("input", checkNativeDateValue);
+
     // --- Submit ---
     const submitBtn = document.getElementById('gym-submit');
     const submitStatus = document.getElementById('submit-status');
@@ -315,6 +403,9 @@
         contextAction: contextStatus.textContent ? contextStatus.textContent.replace('Context action: ', '') : '(none)',
         selectedImage: selectedImage || '(none)',
         notes: textarea.value.trim() || '(empty)',
+        hoverReward: hoverStatus.textContent.includes("claimed") ? "claimed" : "(not claimed)",
+        shadowMemberId: shadowInput.value.trim() || "(not set)",
+        nativeDate: nativeDateInput.value || "(not set)",
       };
 
       const missing = [];
@@ -322,6 +413,9 @@
       if (!selectInput.value) missing.push('exercise');
       if (!selectedImage) missing.push('image');
       if (!textarea.value.trim()) missing.push('notes');
+      if (!hoverStatus.textContent.includes("claimed")) missing.push("hover");
+      if (!shadowInput.value.trim()) missing.push("shadow-member-id");
+      if (!nativeDateInput.value) missing.push("native-date");
 
       if (missing.length > 0) {
         submitStatus.textContent = `Missing: ${missing.join(', ')}`;
