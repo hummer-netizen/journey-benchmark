@@ -62,9 +62,9 @@
     .status.success { display: block; background: #d1e7dd; color: #0f5132; }
     .status.error { display: block; background: #f8d7da; color: #842029; }
 
-    /* Hover state */
-    #gym-hover-area:hover #hover-hint { display: none; }
-    #gym-hover-area:hover #hover-reveal { display: block !important; }
+    /* Hover state — JS-driven class toggle for Webfuse compatibility */
+    #gym-hover-area.hovered #hover-hint { display: none; }
+    #gym-hover-area.hovered #hover-reveal { display: block !important; }
 
     /* Context menu */
     .context-area {
@@ -337,9 +337,12 @@
       }
     });
 
-    // --- Hover State ---
+    // --- Hover State (JS mouseenter/mouseleave for Webfuse proxy compat) ---
+    const hoverArea = document.getElementById("gym-hover-area");
     const hoverActionBtn = document.getElementById("hover-action-btn");
     const hoverStatus = document.getElementById("hover-status");
+    hoverArea.addEventListener("mouseenter", () => { hoverArea.classList.add("hovered"); });
+    hoverArea.addEventListener("mouseleave", () => { hoverArea.classList.remove("hovered"); });
     hoverActionBtn.addEventListener("click", () => {
       hoverStatus.textContent = "Reward claimed!";
       hoverStatus.className = "status success";
