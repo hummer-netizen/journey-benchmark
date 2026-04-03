@@ -1,0 +1,218 @@
+[
+  {
+    "status": "PASS",
+    "toolCalls": 2,
+    "timeMs": 15543,
+    "error": null,
+    "componentId": "navigate",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 2,
+    "timeMs": 20304,
+    "error": null,
+    "componentId": "navigate",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 2,
+    "timeMs": 16139,
+    "error": null,
+    "componentId": "navigate",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 8,
+    "timeMs": 47168,
+    "error": null,
+    "componentId": "datepicker-text",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 35147,
+    "error": null,
+    "componentId": "datepicker-text",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 37216,
+    "error": null,
+    "componentId": "datepicker-text",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 3,
+    "timeMs": 19968,
+    "error": null,
+    "componentId": "select-dropdown",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 3,
+    "timeMs": 19807,
+    "error": null,
+    "componentId": "select-dropdown",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 3,
+    "timeMs": 21409,
+    "error": null,
+    "componentId": "select-dropdown",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 4,
+    "timeMs": 28647,
+    "error": null,
+    "componentId": "context-menu",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 4,
+    "timeMs": 26890,
+    "error": null,
+    "componentId": "context-menu",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 4,
+    "timeMs": 26719,
+    "error": null,
+    "componentId": "context-menu",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 7,
+    "timeMs": 42425,
+    "error": null,
+    "componentId": "clickable-image",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 7,
+    "timeMs": 44101,
+    "error": null,
+    "componentId": "clickable-image",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 48043,
+    "error": null,
+    "componentId": "clickable-image",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 4,
+    "timeMs": 32392,
+    "error": null,
+    "componentId": "textarea",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 5,
+    "timeMs": 36379,
+    "error": null,
+    "componentId": "textarea",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 41352,
+    "error": null,
+    "componentId": "textarea",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 113650,
+    "error": null,
+    "componentId": "hover-state",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 108781,
+    "error": null,
+    "componentId": "hover-state",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 99967,
+    "error": null,
+    "componentId": "hover-state",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 86879,
+    "error": null,
+    "componentId": "shadow-dom",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 81603,
+    "error": null,
+    "componentId": "shadow-dom",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94132,
+    "error": null,
+    "componentId": "shadow-dom",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94941,
+    "error": null,
+    "componentId": "native-date",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 100276,
+    "error": null,
+    "componentId": "native-date",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94890,
+    "error": null,
+    "componentId": "native-date",
+    "run": 3
+  }
+]
