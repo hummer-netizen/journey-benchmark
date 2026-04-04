@@ -239,6 +239,63 @@
     <div id="native-date-status" class="status"></div>
   </div>
 
+  <!-- 9. Time Input -->
+  <div class="component-card" id="card-time">
+    <h2>9. Time Input</h2>
+    <label for="gym-time">Select a time:</label>
+    <input type="time" id="gym-time" step="60">
+    <div id="time-status" class="status"></div>
+  </div>
+
+  <!-- 10. DateTime-Local Input -->
+  <div class="component-card" id="card-datetime">
+    <h2>10. DateTime-Local Input</h2>
+    <label for="gym-datetime">Select date and time:</label>
+    <input type="datetime-local" id="gym-datetime">
+    <div id="datetime-status" class="status"></div>
+  </div>
+
+  <!-- 11. Range Slider -->
+  <div class="component-card" id="card-range">
+    <h2>11. Range Slider</h2>
+    <label for="gym-range">Set intensity (0-100):</label>
+    <input type="range" id="gym-range" min="0" max="100" value="50" step="1">
+    <p>Current value: <span id="range-value">50</span></p>
+    <p style="font-size:0.85rem;color:#6c757d;">Supports: pointer drag or keyboard arrow keys</p>
+    <div id="range-status" class="status"></div>
+  </div>
+
+  <!-- 12. Nested Shadow Root -->
+  <div class="component-card" id="card-nested-shadow">
+    <h2>12. Nested Shadow Root</h2>
+    <p>Type a code into the deeply nested shadow DOM input and click Confirm:</p>
+    <div id="gym-nested-shadow-outer"></div>
+    <div id="nested-shadow-status" class="status"></div>
+  </div>
+
+  <!-- 13. Closed Shadow Root -->
+  <div class="component-card" id="card-closed-shadow">
+    <h2>13. Closed Shadow Root</h2>
+    <p>Type a secret code into the closed shadow DOM input and click Verify:</p>
+    <div id="gym-closed-shadow-host"></div>
+    <div id="closed-shadow-status" class="status"></div>
+  </div>
+
+  <!-- 14. Dialog / Popover -->
+  <div class="component-card" id="card-dialog">
+    <h2>14. Dialog / Popover</h2>
+    <button id="gym-open-dialog" type="button">Open Dialog</button>
+    <dialog id="gym-dialog">
+      <h3>Confirm Action</h3>
+      <input type="text" id="dialog-input" placeholder="e.g. CONFIRM-OK" autocomplete="off" style="margin-bottom:0.5rem;">
+      <div style="display:flex;gap:0.5rem;">
+        <button id="dialog-confirm" type="button" style="background:#198754;">Confirm</button>
+        <button id="dialog-cancel" type="button" style="background:#6c757d;">Cancel</button>
+      </div>
+    </dialog>
+    <div id="dialog-status" class="status"></div>
+  </div>
+
   <!-- Submit all -->
   <div class="component-card">
     <h2>Submit Workout</h2>
@@ -393,6 +450,145 @@
     nativeDateInput.addEventListener("change", checkNativeDateValue);
     nativeDateInput.addEventListener("input", checkNativeDateValue);
 
+    // --- Time Input ---
+    const timeInput = document.getElementById('gym-time');
+    const timeStatus = document.getElementById('time-status');
+    function checkTimeValue() {
+      const val = timeInput.value;
+      if (val) {
+        timeStatus.textContent = 'Time selected: ' + val;
+        timeStatus.className = 'status success';
+      }
+    }
+    timeInput.addEventListener('change', checkTimeValue);
+    timeInput.addEventListener('input', checkTimeValue);
+
+    // --- DateTime-Local Input ---
+    const datetimeInput = document.getElementById('gym-datetime');
+    const datetimeStatus = document.getElementById('datetime-status');
+    function checkDatetimeValue() {
+      const val = datetimeInput.value;
+      if (val && val.length >= 16) {
+        datetimeStatus.textContent = 'DateTime selected: ' + val;
+        datetimeStatus.className = 'status success';
+      }
+    }
+    datetimeInput.addEventListener('change', checkDatetimeValue);
+    datetimeInput.addEventListener('input', checkDatetimeValue);
+
+    // --- Range Slider ---
+    const rangeInput = document.getElementById('gym-range');
+    const rangeValue = document.getElementById('range-value');
+    const rangeStatus = document.getElementById('range-status');
+    function checkRangeValue() {
+      rangeValue.textContent = rangeInput.value;
+      if (rangeInput.value === '75') {
+        rangeStatus.textContent = 'Intensity set to 75!';
+        rangeStatus.className = 'status success';
+      } else {
+        rangeStatus.className = 'status';
+      }
+    }
+    rangeInput.addEventListener('input', checkRangeValue);
+    rangeInput.addEventListener('change', checkRangeValue);
+
+    // --- Nested Shadow Root ---
+    const nestedOuter = document.getElementById('gym-nested-shadow-outer');
+    const outerShadow = nestedOuter.attachShadow({ mode: 'open' });
+    outerShadow.innerHTML = `
+      <style>
+        :host { display: block; }
+        .outer-shell { padding: 12px; border: 2px solid #0d6efd; border-radius: 4px; background: #f0f4ff; }
+      </style>
+      <div class="outer-shell">
+        <div id="inner-host"></div>
+      </div>
+    `;
+    const innerHost = outerShadow.querySelector('#inner-host');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    innerShadow.innerHTML = `
+      <style>
+        :host { display: block; }
+        .inner-shell { padding: 12px; border: 2px dashed #ffc107; border-radius: 4px; background: #fffbea; }
+        input { font-size: 1rem; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; width: 100%; max-width: 300px; }
+        button { font-size: 0.9rem; padding: 0.4rem 1rem; border: none; border-radius: 4px; cursor: pointer; background: #0d6efd; color: #fff; margin-top: 0.5rem; }
+        button:hover { background: #0b5ed7; }
+      </style>
+      <div class="inner-shell">
+        <input type="text" id="nested-input" placeholder="e.g. DEEP-42" autocomplete="off">
+        <button type="button" id="nested-confirm-btn">Confirm</button>
+      </div>
+    `;
+    const nestedShadowStatus = document.getElementById('nested-shadow-status');
+    const nestedInput = innerShadow.querySelector('#nested-input');
+    const nestedConfirmBtn = innerShadow.querySelector('#nested-confirm-btn');
+    nestedConfirmBtn.addEventListener('click', () => {
+      const val = nestedInput.value.trim();
+      if (val.length > 0) {
+        nestedShadowStatus.textContent = 'Nested confirmed: ' + val;
+        nestedShadowStatus.className = 'status success';
+      } else {
+        nestedShadowStatus.textContent = 'Please enter a code';
+        nestedShadowStatus.className = 'status error';
+      }
+    });
+
+    // --- Closed Shadow Root ---
+    const closedHost = document.getElementById('gym-closed-shadow-host');
+    const closedShadow = closedHost.attachShadow({ mode: 'closed' });
+    closedShadow.innerHTML = `
+      <style>
+        :host { display: block; }
+        .closed-shell { padding: 12px; border: 2px solid #dc3545; border-radius: 4px; background: #fff5f5; }
+        input { font-size: 1rem; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; width: 100%; max-width: 300px; }
+        button { font-size: 0.9rem; padding: 0.4rem 1rem; border: none; border-radius: 4px; cursor: pointer; background: #0d6efd; color: #fff; margin-top: 0.5rem; }
+        button:hover { background: #0b5ed7; }
+      </style>
+      <div class="closed-shell">
+        <input type="text" id="closed-input" placeholder="Type here..." aria-label="Secret code input" autocomplete="off">
+        <button type="button" id="closed-verify-btn" aria-label="Verify secret code">Verify</button>
+      </div>
+    `;
+    const closedShadowStatus = document.getElementById('closed-shadow-status');
+    const closedInput = closedShadow.querySelector('#closed-input');
+    const closedVerifyBtn = closedShadow.querySelector('#closed-verify-btn');
+    closedVerifyBtn.addEventListener('click', () => {
+      const val = closedInput.value.trim();
+      if (val.length > 0) {
+        closedShadowStatus.textContent = 'Closed verified: ' + val;
+        closedShadowStatus.className = 'status success';
+      } else {
+        closedShadowStatus.textContent = 'Please enter a code';
+        closedShadowStatus.className = 'status error';
+      }
+    });
+
+    // --- Dialog / Popover ---
+    const openDialogBtn = document.getElementById('gym-open-dialog');
+    const gymDialog = document.getElementById('gym-dialog');
+    const dialogInput = document.getElementById('dialog-input');
+    const dialogConfirmBtn = document.getElementById('dialog-confirm');
+    const dialogCancelBtn = document.getElementById('dialog-cancel');
+    const dialogStatus = document.getElementById('dialog-status');
+
+    openDialogBtn.addEventListener('click', () => {
+      dialogInput.value = '';
+      gymDialog.showModal();
+    });
+    dialogConfirmBtn.addEventListener('click', () => {
+      const val = dialogInput.value.trim();
+      if (val.length > 0) {
+        dialogStatus.textContent = 'Dialog confirmed: ' + val;
+        dialogStatus.className = 'status success';
+      }
+      gymDialog.close();
+    });
+    dialogCancelBtn.addEventListener('click', () => {
+      dialogStatus.textContent = 'Dialog cancelled';
+      dialogStatus.className = 'status error';
+      gymDialog.close();
+    });
+
     // --- Submit ---
     const submitBtn = document.getElementById('gym-submit');
     const submitStatus = document.getElementById('submit-status');
@@ -409,6 +605,12 @@
         hoverReward: hoverStatus.textContent.includes("claimed") ? "claimed" : "(not claimed)",
         shadowMemberId: shadowInput.value.trim() || "(not set)",
         nativeDate: nativeDateInput.value || "(not set)",
+        timeValue: timeInput.value || "(not set)",
+        datetimeValue: datetimeInput.value || "(not set)",
+        rangeValue: rangeInput.value,
+        nestedCode: nestedInput.value.trim() || "(not set)",
+        closedCode: closedInput.value.trim() || "(not set)",
+        dialogCode: dialogStatus.textContent.includes("confirmed") ? dialogInput.value.trim() || dialogStatus.textContent.replace("Dialog confirmed: ", "") : "(not set)",
       };
 
       const missing = [];
@@ -419,6 +621,12 @@
       if (!hoverStatus.textContent.includes("claimed")) missing.push("hover");
       if (!shadowInput.value.trim()) missing.push("shadow-member-id");
       if (!nativeDateInput.value) missing.push("native-date");
+      if (!timeInput.value) missing.push("time");
+      if (!datetimeInput.value) missing.push("datetime");
+      if (rangeInput.value !== '75') missing.push("range");
+      if (!nestedInput.value.trim()) missing.push("nested-code");
+      if (!closedInput.value.trim()) missing.push("closed-code");
+      if (!dialogStatus.textContent.includes("confirmed")) missing.push("dialog");
 
       if (missing.length > 0) {
         submitStatus.textContent = `Missing: ${missing.join(', ')}`;

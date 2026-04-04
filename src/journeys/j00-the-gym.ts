@@ -160,8 +160,108 @@ export class J00TheGym extends BaseJourney {
         },
       },
       {
+        name: 'TimeInput — Select a time',
+        goal: 'Find the time input labelled "Select a time" and set it to 13:45. Verify the status message shows "Time selected: 13:45".',
+        execute: async (page: Page) => {
+          await page.fill('#gym-time', '13:45');
+          await page.dispatchEvent('#gym-time', 'change');
+          await page.waitForSelector('#time-status.success', { timeout: 10000 });
+          const text = await page.textContent('#time-status');
+          if (!text?.includes('13:45')) {
+            throw new Error(`TimeInput: expected status to contain '13:45', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'DateTimeLocal — Select date and time',
+        goal: 'Find the datetime-local input labelled "Select date and time" and set it to 2026-07-20T13:45. Verify the status message shows "DateTime selected:" followed by the value.',
+        execute: async (page: Page) => {
+          await page.fill('#gym-datetime', '2026-07-20T13:45');
+          await page.dispatchEvent('#gym-datetime', 'change');
+          await page.waitForSelector('#datetime-status.success', { timeout: 10000 });
+          const text = await page.textContent('#datetime-status');
+          if (!text?.includes('2026-07-20T13:45')) {
+            throw new Error(`DateTimeLocal: expected status to contain '2026-07-20T13:45', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'RangeSlider — Set intensity to 75',
+        goal: 'Find the range slider labelled "Set intensity (0-100)" and set it to 75. Verify the displayed value shows "75" and the status message shows "Intensity set to 75!".',
+        execute: async (page: Page) => {
+          await page.fill('#gym-range', '75');
+          await page.dispatchEvent('#gym-range', 'input');
+          await page.waitForSelector('#range-status.success', { timeout: 10000 });
+          const text = await page.textContent('#range-status');
+          if (!text?.includes('75')) {
+            throw new Error(`RangeSlider: expected status to contain '75', got '${text}'`);
+          }
+          const displayed = await page.textContent('#range-value');
+          if (displayed?.trim() !== '75') {
+            throw new Error(`RangeSlider: expected displayed value '75', got '${displayed}'`);
+          }
+        },
+      },
+      {
+        name: 'NestedShadow — Type code and confirm',
+        goal: 'Find the nested shadow DOM component with a blue border containing a yellow-dashed inner box. Inside the inner shadow root, type "DEEP-42" into the input and click "Confirm". Verify the status message shows "Nested confirmed: DEEP-42".',
+        execute: async (page: Page) => {
+          // Pierce two levels of shadow DOM using evaluateHandle
+          const nestedInput = await page.evaluateHandle(() => {
+            const outer = document.querySelector('#gym-nested-shadow-outer');
+            const outerSR = outer?.shadowRoot;
+            const inner = outerSR?.querySelector('#inner-host');
+            const innerSR = inner?.shadowRoot;
+            return innerSR?.querySelector('#nested-input');
+          });
+          await (nestedInput as any).fill('DEEP-42');
+          const nestedBtn = await page.evaluateHandle(() => {
+            const outer = document.querySelector('#gym-nested-shadow-outer');
+            const outerSR = outer?.shadowRoot;
+            const inner = outerSR?.querySelector('#inner-host');
+            const innerSR = inner?.shadowRoot;
+            return innerSR?.querySelector('#nested-confirm-btn');
+          });
+          await (nestedBtn as any).click();
+          await page.waitForSelector('#nested-shadow-status.success', { timeout: 10000 });
+          const text = await page.textContent('#nested-shadow-status');
+          if (!text?.includes('DEEP-42')) {
+            throw new Error(`NestedShadow: expected status to contain "DEEP-42", got "${text}"`);
+          }
+        },
+      },
+      {
+        name: 'ClosedShadow — Enter secret code',
+        goal: 'Find the closed shadow DOM component with a red border. Since the shadow root is closed, use aria labels to interact. Type "SECRET-99" into the input (aria-label "Secret code input") and click "Verify" (aria-label "Verify secret code"). Verify the status message shows "Closed verified: SECRET-99".',
+        execute: async (page: Page) => {
+          // Closed shadow root — use page.getByLabel() which can pierce closed shadows
+          await page.getByLabel('Secret code input').fill('SECRET-99');
+          await page.getByLabel('Verify secret code').click();
+          await page.waitForSelector('#closed-shadow-status.success', { timeout: 10000 });
+          const text = await page.textContent('#closed-shadow-status');
+          if (!text?.includes('SECRET-99')) {
+            throw new Error(`ClosedShadow: expected status to contain "SECRET-99", got "${text}"`);
+          }
+        },
+      },
+      {
+        name: 'Dialog — Open, fill, and confirm',
+        goal: 'Click the "Open Dialog" button to open a modal dialog. Inside the dialog, type "CONFIRM-OK" into the input and click "Confirm". Verify the status message shows "Dialog confirmed: CONFIRM-OK".',
+        execute: async (page: Page) => {
+          await page.click('#gym-open-dialog');
+          await page.waitForSelector('#gym-dialog[open]', { timeout: 10000 });
+          await page.fill('#dialog-input', 'CONFIRM-OK');
+          await page.click('#dialog-confirm');
+          await page.waitForSelector('#dialog-status.success', { timeout: 10000 });
+          const text = await page.textContent('#dialog-status');
+          if (!text?.includes('CONFIRM-OK')) {
+            throw new Error(`Dialog: expected status to contain "CONFIRM-OK", got "${text}"`);
+          }
+        },
+      },
+      {
         name: 'Submit — Verify all components',
-        goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered (date, exercise, image, notes, hover reward, shadow membership ID, native date).',
+        goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered (date, exercise, image, notes, hover reward, shadow membership ID, native date, time, datetime, range, nested code, closed code, dialog code).',
         execute: async (page: Page) => {
           await page.click('#gym-submit');
           await page.waitForSelector('#result-panel.visible', { timeout: 10000 });
@@ -178,6 +278,12 @@ export class J00TheGym extends BaseJourney {
           if (parsed.hoverReward === '(not claimed)') throw new Error('Submit: hover reward not claimed');
           if (parsed.shadowMemberId === '(not set)') throw new Error('Submit: shadow member ID not recorded');
           if (parsed.nativeDate === '(not set)') throw new Error('Submit: native date not recorded');
+          if (parsed.timeValue === '(not set)') throw new Error('Submit: time not recorded');
+          if (parsed.datetimeValue === '(not set)') throw new Error('Submit: datetime not recorded');
+          if (parsed.rangeValue !== '75') throw new Error('Submit: range not set to 75');
+          if (parsed.nestedCode === '(not set)') throw new Error('Submit: nested code not recorded');
+          if (parsed.closedCode === '(not set)') throw new Error('Submit: closed code not recorded');
+          if (parsed.dialogCode === '(not set)') throw new Error('Submit: dialog code not recorded');
         },
       },
     ];
