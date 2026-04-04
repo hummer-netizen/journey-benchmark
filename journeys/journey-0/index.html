@@ -296,6 +296,156 @@
     <div id="dialog-status" class="status"></div>
   </div>
 
+  <!-- ==================== SECTION 1: Native Inputs ==================== -->
+
+  <!-- 15. Color Picker -->
+  <div class="component-card" id="card-color">
+    <h2>15. Color Picker</h2>
+    <label for="gym-color">Pick a color:</label>
+    <input type="color" id="gym-color" value="#000000">
+    <p>Selected: <span id="color-preview" style="display:inline-block;width:24px;height:24px;vertical-align:middle;border:1px solid #ced4da;border-radius:4px;background:#000000;"></span> <span id="color-hex">#000000</span></p>
+    <div id="color-status" class="status"></div>
+  </div>
+
+  <!-- 16. Blur-Validated Input -->
+  <div class="component-card" id="card-blur">
+    <h2>16. Blur-Validated Input</h2>
+    <label for="gym-blur-input">Enter your email (validated on blur):</label>
+    <input type="text" id="gym-blur-input" placeholder="you@example.com" autocomplete="off">
+    <p id="blur-hint" style="font-size:0.85rem;color:#6c757d;">Validation runs only when you leave the field (blur event).</p>
+    <div id="blur-status" class="status"></div>
+  </div>
+
+  <!-- ==================== SECTION 2: Event Order ==================== -->
+
+  <!-- 17. Input-vs-Change Divergence -->
+  <div class="component-card" id="card-inputchange">
+    <h2>17. Input vs Change Divergence</h2>
+    <label for="gym-inputchange">Type a value and then leave the field:</label>
+    <input type="text" id="gym-inputchange" placeholder="Type here..." autocomplete="off">
+    <p>Input events: <span id="inputchange-input-count">0</span> | Change events: <span id="inputchange-change-count">0</span></p>
+    <div id="inputchange-status" class="status"></div>
+  </div>
+
+  <!-- 18. Focus Trap / Keyboard Modal -->
+  <div class="component-card" id="card-focustrap">
+    <h2>18. Focus Trap / Keyboard Modal</h2>
+    <button id="gym-open-focustrap" type="button">Open Focus Trap Dialog</button>
+    <dialog id="gym-focustrap-dialog" style="border:2px solid #0d6efd;border-radius:8px;padding:1.5rem;max-width:400px;">
+      <h3 style="margin-top:0;">Focus Trap Test</h3>
+      <p style="font-size:0.9rem;color:#6c757d;">Tab should cycle only within this dialog.</p>
+      <label for="focustrap-name" style="font-size:0.9rem;">Name:</label>
+      <input type="text" id="focustrap-name" placeholder="Your name" autocomplete="off" style="margin-bottom:0.5rem;">
+      <label for="focustrap-code" style="font-size:0.9rem;">Code:</label>
+      <input type="text" id="focustrap-code" placeholder="e.g. TRAP-77" autocomplete="off" style="margin-bottom:0.5rem;">
+      <div style="display:flex;gap:0.5rem;">
+        <button id="focustrap-confirm" type="button" style="background:#198754;">Confirm</button>
+        <button id="focustrap-cancel" type="button" style="background:#6c757d;">Cancel</button>
+      </div>
+    </dialog>
+    <div id="focustrap-status" class="status"></div>
+  </div>
+
+  <!-- ==================== SECTION 3: Shadow DOM ==================== -->
+
+  <!-- 19. Slotted Interactive Content -->
+  <div class="component-card" id="card-slotted">
+    <h2>19. Slotted Interactive Content</h2>
+    <p>The button and input below are light-DOM elements slotted into a shadow host:</p>
+    <div id="gym-slotted-host">
+      <input type="text" id="slotted-input" slot="slotted-input" placeholder="Type SLOT-OK" autocomplete="off" style="font-size:1rem;padding:0.5rem;border:1px solid #ced4da;border-radius:4px;max-width:300px;">
+      <button id="slotted-btn" slot="slotted-btn" type="button" style="font-size:0.9rem;padding:0.4rem 1rem;border:none;border-radius:4px;cursor:pointer;background:#0d6efd;color:#fff;margin-top:0.5rem;">Submit Slot</button>
+    </div>
+    <div id="slotted-status" class="status"></div>
+  </div>
+
+  <!-- 20. DelegatesFocus Shadow Root -->
+  <div class="component-card" id="card-delegatesfocus">
+    <h2>20. DelegatesFocus Shadow Root</h2>
+    <p>Click the bordered host area below. Focus should jump to the inner input automatically:</p>
+    <div id="gym-delegatesfocus-host" tabindex="0" style="border:2px solid #6610f2;border-radius:4px;padding:12px;cursor:pointer;max-width:400px;"></div>
+    <div id="delegatesfocus-status" class="status"></div>
+  </div>
+
+  <!-- ==================== SECTION 4: Custom Elements ==================== -->
+
+  <!-- 21. Form-Associated Custom Element -->
+  <div class="component-card" id="card-formassoc">
+    <h2>21. Form-Associated Custom Element</h2>
+    <p>This custom element participates in form submission via <code>ElementInternals</code>:</p>
+    <form id="gym-formassoc-form" style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <label for="formassoc-display">Rating (1-5):</label>
+        <gym-rating id="gym-rating-el"></gym-rating>
+      </div>
+      <button type="submit" style="height:fit-content;">Submit Form</button>
+    </form>
+    <div id="formassoc-status" class="status"></div>
+  </div>
+
+  <!-- 22. Autonomous Toggle Component -->
+  <div class="component-card" id="card-toggle">
+    <h2>22. Autonomous Toggle Component</h2>
+    <p>Click or press Space/Enter to toggle:</p>
+    <gym-toggle id="gym-toggle-el" aria-pressed="false" role="button" tabindex="0" style="display:inline-block;cursor:pointer;user-select:none;padding:8px 20px;border:2px solid #ced4da;border-radius:20px;background:#e9ecef;font-size:1rem;transition:all 0.2s;">OFF</gym-toggle>
+    <div id="toggle-status" class="status"></div>
+  </div>
+
+  <!-- 23. Customized Built-in Element -->
+  <div class="component-card" id="card-custombuiltin">
+    <h2>23. Customized Built-in Element</h2>
+    <p>This button extends <code>HTMLButtonElement</code> with a click counter via <code>is="gym-counter-button"</code>:</p>
+    <button is="gym-counter-button" id="gym-counter-btn" type="button" style="font-size:1rem;padding:0.5rem 1.25rem;">Click me: 0</button>
+    <div id="custombuiltin-status" class="status"></div>
+  </div>
+
+  <!-- ==================== SECTION 5: Rendering/AX Gaps ==================== -->
+
+  <!-- 24. SVG Composite Control -->
+  <div class="component-card" id="card-svg">
+    <h2>24. SVG Composite Control</h2>
+    <p>Click the green "Go" button in the SVG below:</p>
+    <svg id="gym-svg-control" width="300" height="120" viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="SVG control panel" style="border:1px solid #dee2e6;border-radius:4px;">
+      <rect width="300" height="120" fill="#f8f9fa"/>
+      <text x="150" y="25" text-anchor="middle" font-size="14" font-family="sans-serif" fill="#495057">SVG Control Panel</text>
+      <g id="svg-go-btn" role="button" aria-label="Go button" tabindex="0" cursor="pointer">
+        <rect x="30" y="45" width="100" height="50" rx="8" fill="#198754" stroke="#157347" stroke-width="2"/>
+        <text x="80" y="77" text-anchor="middle" fill="#fff" font-size="16" font-family="sans-serif" pointer-events="none">Go</text>
+      </g>
+      <g id="svg-stop-btn" role="button" aria-label="Stop button" tabindex="0" cursor="pointer">
+        <rect x="170" y="45" width="100" height="50" rx="8" fill="#dc3545" stroke="#b02a37" stroke-width="2"/>
+        <text x="220" y="77" text-anchor="middle" fill="#fff" font-size="16" font-family="sans-serif" pointer-events="none">Stop</text>
+      </g>
+    </svg>
+    <div id="svg-status" class="status"></div>
+  </div>
+
+  <!-- 25. Canvas-backed Widget -->
+  <div class="component-card" id="card-canvas">
+    <h2>25. Canvas-backed Widget</h2>
+    <p>The canvas shows a visual gauge. Use the hidden semantic controls to set the value:</p>
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+      <canvas id="gym-canvas" width="200" height="200" style="border:1px solid #dee2e6;border-radius:4px;" aria-hidden="true"></canvas>
+      <div>
+        <label for="canvas-value-input">Gauge value (0-100):</label>
+        <input type="number" id="canvas-value-input" min="0" max="100" value="0" style="width:80px;">
+        <button id="canvas-set-btn" type="button" style="margin-left:0.5rem;">Set</button>
+      </div>
+    </div>
+    <div id="canvas-status" class="status"></div>
+  </div>
+
+  <!-- 26. Drag and Drop -->
+  <div class="component-card" id="card-dnd">
+    <h2>26. Drag and Drop</h2>
+    <p>Drag the item into the drop zone:</p>
+    <div style="display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;">
+      <div id="dnd-source" draggable="true" style="width:120px;height:60px;background:#0d6efd;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:grab;font-weight:600;">Drag me</div>
+      <div id="dnd-target" style="width:200px;height:100px;border:3px dashed #ced4da;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#6c757d;transition:all 0.2s;" aria-label="Drop zone">Drop here</div>
+    </div>
+    <div id="dnd-status" class="status"></div>
+  </div>
+
   <!-- Submit all -->
   <div class="component-card">
     <h2>Submit Workout</h2>
@@ -589,6 +739,395 @@
       gymDialog.close();
     });
 
+    // --- Color Picker ---
+    const colorInput = document.getElementById('gym-color');
+    const colorPreview = document.getElementById('color-preview');
+    const colorHex = document.getElementById('color-hex');
+    const colorStatus = document.getElementById('color-status');
+    function checkColorValue() {
+      const val = colorInput.value;
+      colorPreview.style.background = val;
+      colorHex.textContent = val;
+      if (val.toLowerCase() === '#00ff88') {
+        colorStatus.textContent = 'Color set: ' + val;
+        colorStatus.className = 'status success';
+      } else {
+        colorStatus.className = 'status';
+      }
+    }
+    colorInput.addEventListener('input', checkColorValue);
+    colorInput.addEventListener('change', checkColorValue);
+
+    // --- Blur-Validated Input ---
+    const blurInput = document.getElementById('gym-blur-input');
+    const blurStatus = document.getElementById('blur-status');
+    let blurValidated = false;
+    blurInput.addEventListener('blur', () => {
+      const val = blurInput.value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(val)) {
+        blurStatus.textContent = 'Valid email: ' + val;
+        blurStatus.className = 'status success';
+        blurValidated = true;
+      } else if (val.length > 0) {
+        blurStatus.textContent = 'Invalid email format';
+        blurStatus.className = 'status error';
+        blurValidated = false;
+      } else {
+        blurStatus.className = 'status';
+        blurValidated = false;
+      }
+    });
+
+    // --- Input-vs-Change Divergence ---
+    const inputchangeInput = document.getElementById('gym-inputchange');
+    const inputchangeInputCount = document.getElementById('inputchange-input-count');
+    const inputchangeChangeCount = document.getElementById('inputchange-change-count');
+    const inputchangeStatus = document.getElementById('inputchange-status');
+    let icInputCount = 0;
+    let icChangeCount = 0;
+    inputchangeInput.addEventListener('input', () => {
+      icInputCount++;
+      inputchangeInputCount.textContent = icInputCount;
+      checkInputChange();
+    });
+    inputchangeInput.addEventListener('change', () => {
+      icChangeCount++;
+      inputchangeChangeCount.textContent = icChangeCount;
+      checkInputChange();
+    });
+    function checkInputChange() {
+      if (icInputCount > 0 && icChangeCount > 0) {
+        inputchangeStatus.textContent = 'Both events fired. Input: ' + icInputCount + ', Change: ' + icChangeCount;
+        inputchangeStatus.className = 'status success';
+      }
+    }
+
+    // --- Focus Trap / Keyboard Modal ---
+    const openFocustrapBtn = document.getElementById('gym-open-focustrap');
+    const focustrapDialog = document.getElementById('gym-focustrap-dialog');
+    const focustrapName = document.getElementById('focustrap-name');
+    const focustrapCode = document.getElementById('focustrap-code');
+    const focustrapConfirm = document.getElementById('focustrap-confirm');
+    const focustrapCancel = document.getElementById('focustrap-cancel');
+    const focustrapStatus = document.getElementById('focustrap-status');
+
+    openFocustrapBtn.addEventListener('click', () => {
+      focustrapName.value = '';
+      focustrapCode.value = '';
+      focustrapDialog.showModal();
+      focustrapName.focus();
+    });
+    focustrapConfirm.addEventListener('click', () => {
+      const code = focustrapCode.value.trim();
+      if (code.length > 0) {
+        focustrapStatus.textContent = 'Focus trap confirmed: ' + code;
+        focustrapStatus.className = 'status success';
+      }
+      focustrapDialog.close();
+    });
+    focustrapCancel.addEventListener('click', () => {
+      focustrapStatus.textContent = 'Focus trap cancelled';
+      focustrapStatus.className = 'status error';
+      focustrapDialog.close();
+    });
+
+    // --- Slotted Interactive Content ---
+    const slottedHost = document.getElementById('gym-slotted-host');
+    const slottedShadow = slottedHost.attachShadow({ mode: 'open' });
+    slottedShadow.innerHTML = `
+      <style>
+        :host { display: block; }
+        .slotted-wrapper { padding: 12px; border: 2px dotted #20c997; border-radius: 4px; background: #f0fdf8; }
+        .slotted-wrapper p { margin: 0 0 8px; font-size: 0.85rem; color: #6c757d; }
+      </style>
+      <div class="slotted-wrapper">
+        <p>Shadow host with slotted light-DOM content:</p>
+        <slot name="slotted-input"></slot>
+        <slot name="slotted-btn"></slot>
+      </div>
+    `;
+    const slottedInput = document.getElementById('slotted-input');
+    const slottedBtn = document.getElementById('slotted-btn');
+    const slottedStatus = document.getElementById('slotted-status');
+    slottedBtn.addEventListener('click', () => {
+      const val = slottedInput.value.trim();
+      if (val.length > 0) {
+        slottedStatus.textContent = 'Slotted submitted: ' + val;
+        slottedStatus.className = 'status success';
+      } else {
+        slottedStatus.textContent = 'Please enter a value';
+        slottedStatus.className = 'status error';
+      }
+    });
+
+    // --- DelegatesFocus Shadow Root ---
+    const dfHost = document.getElementById('gym-delegatesfocus-host');
+    const dfShadow = dfHost.attachShadow({ mode: 'open', delegatesFocus: true });
+    dfShadow.innerHTML = `
+      <style>
+        :host { display: block; }
+        :host(:focus-within) { outline: 2px solid #6610f2; }
+        .df-inner { padding: 8px; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        input { font-size: 1rem; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; width: 100%; max-width: 300px; }
+        button { font-size: 0.9rem; padding: 0.4rem 1rem; border: none; border-radius: 4px; cursor: pointer; background: #6610f2; color: #fff; margin-top: 0.5rem; }
+        button:hover { background: #520dc2; }
+      </style>
+      <div class="df-inner">
+        <label>Focus-delegated input:</label>
+        <input type="text" id="df-input" placeholder="e.g. FOCUS-88" autocomplete="off">
+        <button type="button" id="df-submit-btn">Submit</button>
+      </div>
+    `;
+    const dfStatus = document.getElementById('delegatesfocus-status');
+    const dfInput = dfShadow.querySelector('#df-input');
+    const dfSubmitBtn = dfShadow.querySelector('#df-submit-btn');
+    dfSubmitBtn.addEventListener('click', () => {
+      const val = dfInput.value.trim();
+      if (val.length > 0) {
+        dfStatus.textContent = 'DelegatesFocus confirmed: ' + val;
+        dfStatus.className = 'status success';
+      } else {
+        dfStatus.textContent = 'Please enter a value';
+        dfStatus.className = 'status error';
+      }
+    });
+
+    // --- Form-Associated Custom Element (gym-rating) ---
+    class GymRating extends HTMLElement {
+      static formAssociated = true;
+      #internals;
+      #value = 0;
+      #shadow;
+
+      constructor() {
+        super();
+        this.#internals = this.attachInternals();
+        this.#shadow = this.attachShadow({ mode: 'open' });
+        this.#shadow.innerHTML = `
+          <style>
+            :host { display: inline-block; }
+            .stars { display: flex; gap: 4px; cursor: pointer; }
+            .star { font-size: 1.5rem; color: #ced4da; transition: color 0.15s; user-select: none; }
+            .star.active { color: #ffc107; }
+            .star:hover { color: #ffca2c; }
+          </style>
+          <div class="stars" role="radiogroup" aria-label="Rating">
+            ${[1,2,3,4,5].map(n => `<span class="star" data-value="${n}" role="radio" aria-checked="false" aria-label="${n} star${n>1?'s':''}" tabindex="0">&#9733;</span>`).join('')}
+          </div>
+        `;
+      }
+
+      connectedCallback() {
+        this.#shadow.querySelectorAll('.star').forEach(star => {
+          star.addEventListener('click', () => this.#setRating(Number(star.dataset.value)));
+          star.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              this.#setRating(Number(star.dataset.value));
+            }
+          });
+        });
+      }
+
+      #setRating(val) {
+        this.#value = val;
+        this.#internals.setFormValue(String(val));
+        this.#shadow.querySelectorAll('.star').forEach(s => {
+          const v = Number(s.dataset.value);
+          s.classList.toggle('active', v <= val);
+          s.setAttribute('aria-checked', v === val ? 'true' : 'false');
+        });
+        this.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      get value() { return this.#value; }
+    }
+    customElements.define('gym-rating', GymRating);
+
+    const gymRatingEl = document.getElementById('gym-rating-el');
+    const formAssocForm = document.getElementById('gym-formassoc-form');
+    const formAssocStatus = document.getElementById('formassoc-status');
+    formAssocForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const rating = gymRatingEl.value;
+      if (rating >= 1 && rating <= 5) {
+        formAssocStatus.textContent = 'Form submitted with rating: ' + rating;
+        formAssocStatus.className = 'status success';
+      } else {
+        formAssocStatus.textContent = 'Please select a rating (1-5)';
+        formAssocStatus.className = 'status error';
+      }
+    });
+
+    // --- Autonomous Toggle Component (gym-toggle) ---
+    class GymToggle extends HTMLElement {
+      #pressed = false;
+
+      connectedCallback() {
+        this.addEventListener('click', () => this.#toggle());
+        this.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.#toggle();
+          }
+        });
+      }
+
+      #toggle() {
+        this.#pressed = !this.#pressed;
+        this.setAttribute('aria-pressed', String(this.#pressed));
+        this.textContent = this.#pressed ? 'ON' : 'OFF';
+        this.style.background = this.#pressed ? '#198754' : '#e9ecef';
+        this.style.color = this.#pressed ? '#fff' : '#212529';
+        this.style.borderColor = this.#pressed ? '#198754' : '#ced4da';
+        this.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const toggleStatus = document.getElementById('toggle-status');
+        toggleStatus.textContent = 'Toggle is ' + (this.#pressed ? 'ON' : 'OFF') + ' (aria-pressed=' + this.#pressed + ')';
+        toggleStatus.className = 'status success';
+      }
+
+      get pressed() { return this.#pressed; }
+    }
+    customElements.define('gym-toggle', GymToggle);
+
+    // --- Customized Built-in Element (gym-counter-button) ---
+    class GymCounterButton extends HTMLButtonElement {
+      #count = 0;
+
+      connectedCallback() {
+        this.addEventListener('click', () => {
+          this.#count++;
+          this.textContent = 'Click me: ' + this.#count;
+          const cbStatus = document.getElementById('custombuiltin-status');
+          if (this.#count >= 3) {
+            cbStatus.textContent = 'Counter reached ' + this.#count + ' clicks!';
+            cbStatus.className = 'status success';
+          }
+        });
+      }
+
+      get count() { return this.#count; }
+    }
+    customElements.define('gym-counter-button', GymCounterButton, { extends: 'button' });
+
+    // --- SVG Composite Control ---
+    const svgGoBtn = document.getElementById('svg-go-btn');
+    const svgStopBtn = document.getElementById('svg-stop-btn');
+    const svgStatus = document.getElementById('svg-status');
+    let svgState = null;
+
+    svgGoBtn.addEventListener('click', () => {
+      svgState = 'go';
+      svgStatus.textContent = 'SVG action: Go';
+      svgStatus.className = 'status success';
+      svgGoBtn.querySelector('rect').setAttribute('fill', '#0f5132');
+      svgStopBtn.querySelector('rect').setAttribute('fill', '#dc3545');
+    });
+    svgStopBtn.addEventListener('click', () => {
+      svgState = 'stop';
+      svgStatus.textContent = 'SVG action: Stop';
+      svgStatus.className = 'status success';
+      svgStopBtn.querySelector('rect').setAttribute('fill', '#6a1a21');
+      svgGoBtn.querySelector('rect').setAttribute('fill', '#198754');
+    });
+
+    // --- Canvas-backed Widget ---
+    const gymCanvas = document.getElementById('gym-canvas');
+    const canvasCtx = gymCanvas.getContext('2d');
+    const canvasValueInput = document.getElementById('canvas-value-input');
+    const canvasSetBtn = document.getElementById('canvas-set-btn');
+    const canvasStatus = document.getElementById('canvas-status');
+    let canvasGaugeValue = 0;
+
+    function drawGauge(val) {
+      const cx = 100, cy = 110, r = 80;
+      canvasCtx.clearRect(0, 0, 200, 200);
+      // Background arc
+      canvasCtx.beginPath();
+      canvasCtx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+      canvasCtx.strokeStyle = '#e9ecef';
+      canvasCtx.lineWidth = 12;
+      canvasCtx.stroke();
+      // Value arc
+      const angle = Math.PI + (Math.PI * val / 100);
+      canvasCtx.beginPath();
+      canvasCtx.arc(cx, cy, r, Math.PI, angle);
+      canvasCtx.strokeStyle = val >= 75 ? '#198754' : val >= 50 ? '#ffc107' : '#dc3545';
+      canvasCtx.lineWidth = 12;
+      canvasCtx.stroke();
+      // Text
+      canvasCtx.fillStyle = '#212529';
+      canvasCtx.font = 'bold 28px sans-serif';
+      canvasCtx.textAlign = 'center';
+      canvasCtx.fillText(val + '%', cx, cy - 10);
+      // Label
+      canvasCtx.font = '12px sans-serif';
+      canvasCtx.fillStyle = '#6c757d';
+      canvasCtx.fillText('Gauge', cx, cy + 15);
+    }
+    drawGauge(0);
+
+    canvasSetBtn.addEventListener('click', () => {
+      const val = parseInt(canvasValueInput.value, 10);
+      if (val >= 0 && val <= 100) {
+        canvasGaugeValue = val;
+        drawGauge(val);
+        if (val === 75) {
+          canvasStatus.textContent = 'Canvas gauge set to 75%';
+          canvasStatus.className = 'status success';
+        } else {
+          canvasStatus.textContent = 'Gauge set to ' + val + '% (target: 75)';
+          canvasStatus.className = 'status';
+          canvasStatus.style.display = 'block';
+          canvasStatus.style.background = '#fff3cd';
+          canvasStatus.style.color = '#664d03';
+        }
+      }
+    });
+
+    // --- Drag and Drop ---
+    const dndSource = document.getElementById('dnd-source');
+    const dndTarget = document.getElementById('dnd-target');
+    const dndStatus = document.getElementById('dnd-status');
+    let dndCompleted = false;
+
+    dndSource.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', 'gym-drag-item');
+      e.dataTransfer.effectAllowed = 'move';
+      dndSource.style.opacity = '0.5';
+    });
+    dndSource.addEventListener('dragend', () => {
+      dndSource.style.opacity = '1';
+    });
+    dndTarget.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      dndTarget.style.borderColor = '#0d6efd';
+      dndTarget.style.background = '#e7f1ff';
+    });
+    dndTarget.addEventListener('dragleave', () => {
+      dndTarget.style.borderColor = '#ced4da';
+      dndTarget.style.background = 'transparent';
+    });
+    dndTarget.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const data = e.dataTransfer.getData('text/plain');
+      if (data === 'gym-drag-item') {
+        dndTarget.textContent = 'Dropped!';
+        dndTarget.style.borderColor = '#198754';
+        dndTarget.style.background = '#d1e7dd';
+        dndTarget.style.color = '#0f5132';
+        dndTarget.style.fontWeight = '600';
+        dndSource.style.display = 'none';
+        dndCompleted = true;
+        dndStatus.textContent = 'Drag and drop completed!';
+        dndStatus.className = 'status success';
+      }
+    });
+
     // --- Submit ---
     const submitBtn = document.getElementById('gym-submit');
     const submitStatus = document.getElementById('submit-status');
@@ -611,6 +1150,18 @@
         nestedCode: nestedInput.value.trim() || "(not set)",
         closedCode: closedInput.value.trim() || "(not set)",
         dialogCode: dialogStatus.textContent.includes("confirmed") ? dialogInput.value.trim() || dialogStatus.textContent.replace("Dialog confirmed: ", "") : "(not set)",
+        colorValue: colorInput.value || "(not set)",
+        blurEmail: blurInput.value.trim() || "(not set)",
+        inputChangeEvents: { input: icInputCount, change: icChangeCount },
+        focusTrapCode: focustrapStatus.textContent.includes("confirmed") ? focustrapCode.value.trim() || focustrapStatus.textContent.replace("Focus trap confirmed: ", "") : "(not set)",
+        slottedValue: slottedInput.value.trim() || "(not set)",
+        delegatesFocusValue: dfInput.value.trim() || "(not set)",
+        formRating: gymRatingEl.value || 0,
+        toggleState: document.getElementById('gym-toggle-el').getAttribute('aria-pressed'),
+        counterClicks: document.getElementById('gym-counter-btn').count || 0,
+        svgAction: svgState || "(none)",
+        canvasGauge: canvasGaugeValue,
+        dragDrop: dndCompleted ? "completed" : "(not done)",
       };
 
       const missing = [];
@@ -627,6 +1178,18 @@
       if (!nestedInput.value.trim()) missing.push("nested-code");
       if (!closedInput.value.trim()) missing.push("closed-code");
       if (!dialogStatus.textContent.includes("confirmed")) missing.push("dialog");
+      if (colorInput.value.toLowerCase() !== '#00ff88') missing.push("color");
+      if (!blurValidated) missing.push("blur-email");
+      if (icInputCount === 0 || icChangeCount === 0) missing.push("input-change");
+      if (!focustrapStatus.textContent.includes("confirmed")) missing.push("focus-trap");
+      if (!slottedInput.value.trim()) missing.push("slotted");
+      if (!dfInput.value.trim()) missing.push("delegates-focus");
+      if (gymRatingEl.value < 1) missing.push("form-rating");
+      if (document.getElementById('gym-toggle-el').getAttribute('aria-pressed') !== 'true') missing.push("toggle");
+      if ((document.getElementById('gym-counter-btn').count || 0) < 3) missing.push("counter");
+      if (!svgState) missing.push("svg-control");
+      if (canvasGaugeValue !== 75) missing.push("canvas-gauge");
+      if (!dndCompleted) missing.push("drag-drop");
 
       if (missing.length > 0) {
         submitStatus.textContent = `Missing: ${missing.join(', ')}`;

@@ -259,9 +259,198 @@ export class J00TheGym extends BaseJourney {
           }
         },
       },
+      // === Section 1: Native Inputs ===
+      {
+        name: 'ColorPicker — Set color to #00ff88',
+        goal: 'Find the color picker input labelled "Pick a color" and set its value to #00ff88. Verify the status message shows "Color set: #00ff88" and the preview swatch updates to the correct color.',
+        execute: async (page: Page) => {
+          await page.fill('#gym-color', '#00ff88');
+          await page.dispatchEvent('#gym-color', 'input');
+          await page.waitForSelector('#color-status.success', { timeout: 10000 });
+          const text = await page.textContent('#color-status');
+          if (!text?.includes('#00ff88')) {
+            throw new Error(`ColorPicker: expected status to contain '#00ff88', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'BlurValidated — Enter and blur email',
+        goal: 'Find the blur-validated input labelled "Enter your email (validated on blur)". Type "test@gym.com" into it, then click somewhere else on the page to trigger blur. Verify the status message shows "Valid email: test@gym.com". Important: validation only fires on blur, not on input.',
+        execute: async (page: Page) => {
+          await page.fill('#gym-blur-input', 'test@gym.com');
+          // Trigger blur by clicking elsewhere
+          await page.click('h1');
+          await page.waitForSelector('#blur-status.success', { timeout: 10000 });
+          const text = await page.textContent('#blur-status');
+          if (!text?.includes('test@gym.com')) {
+            throw new Error(`BlurValidated: expected status to contain 'test@gym.com', got '${text}'`);
+          }
+        },
+      },
+      // === Section 2: Event Order ===
+      {
+        name: 'InputChange — Trigger both input and change events',
+        goal: 'Find the text input labelled "Type a value and then leave the field". Type "EVENT-TEST" into it, then click somewhere else to trigger the change event. Verify the status shows both Input and Change event counts are greater than 0.',
+        execute: async (page: Page) => {
+          await page.click('#gym-inputchange');
+          await page.type('#gym-inputchange', 'EVENT-TEST');
+          // Click elsewhere to trigger change
+          await page.click('h1');
+          await page.waitForSelector('#inputchange-status.success', { timeout: 10000 });
+          const text = await page.textContent('#inputchange-status');
+          if (!text?.includes('Both events fired')) {
+            throw new Error(`InputChange: expected status to contain 'Both events fired', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'FocusTrap — Open dialog, tab within, confirm',
+        goal: 'Click the "Open Focus Trap Dialog" button. A modal dialog opens with two inputs (Name and Code) and two buttons. Type "Tester" in the Name field, then Tab to the Code field and type "TRAP-77". Click the "Confirm" button. Verify the status shows "Focus trap confirmed: TRAP-77".',
+        execute: async (page: Page) => {
+          await page.click('#gym-open-focustrap');
+          await page.waitForSelector('#gym-focustrap-dialog[open]', { timeout: 10000 });
+          await page.fill('#focustrap-name', 'Tester');
+          await page.fill('#focustrap-code', 'TRAP-77');
+          await page.click('#focustrap-confirm');
+          await page.waitForSelector('#focustrap-status.success', { timeout: 10000 });
+          const text = await page.textContent('#focustrap-status');
+          if (!text?.includes('TRAP-77')) {
+            throw new Error(`FocusTrap: expected status to contain 'TRAP-77', got '${text}'`);
+          }
+        },
+      },
+      // === Section 3: Shadow DOM ===
+      {
+        name: 'SlottedContent — Interact with slotted elements',
+        goal: 'Find the slotted interactive content component (card 19). It has a text input and a "Submit Slot" button that are light-DOM elements slotted into a shadow host with a dotted green border. Type "SLOT-OK" into the input and click "Submit Slot". Verify the status shows "Slotted submitted: SLOT-OK".',
+        execute: async (page: Page) => {
+          // Slotted elements are in light DOM, directly accessible
+          await page.fill('#slotted-input', 'SLOT-OK');
+          await page.click('#slotted-btn');
+          await page.waitForSelector('#slotted-status.success', { timeout: 10000 });
+          const text = await page.textContent('#slotted-status');
+          if (!text?.includes('SLOT-OK')) {
+            throw new Error(`SlottedContent: expected status to contain 'SLOT-OK', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'DelegatesFocus — Click host, type in inner input',
+        goal: 'Find the DelegatesFocus shadow root component (card 20) with a purple border. Click anywhere on the host area. Focus should automatically delegate to the inner input. Type "FOCUS-88" and click "Submit". Verify the status shows "DelegatesFocus confirmed: FOCUS-88".',
+        execute: async (page: Page) => {
+          // Click the host, focus should delegate to inner input
+          await page.click('#gym-delegatesfocus-host');
+          const dfInput = await page.evaluateHandle(() => {
+            const host = document.querySelector('#gym-delegatesfocus-host');
+            return host?.shadowRoot?.querySelector('#df-input');
+          });
+          await (dfInput as any).fill('FOCUS-88');
+          const dfBtn = await page.evaluateHandle(() => {
+            const host = document.querySelector('#gym-delegatesfocus-host');
+            return host?.shadowRoot?.querySelector('#df-submit-btn');
+          });
+          await (dfBtn as any).click();
+          await page.waitForSelector('#delegatesfocus-status.success', { timeout: 10000 });
+          const text = await page.textContent('#delegatesfocus-status');
+          if (!text?.includes('FOCUS-88')) {
+            throw new Error(`DelegatesFocus: expected status to contain 'FOCUS-88', got '${text}'`);
+          }
+        },
+      },
+      // === Section 4: Custom Elements ===
+      {
+        name: 'FormAssociated — Rate and submit form',
+        goal: 'Find the Form-Associated Custom Element (card 21) with star rating. Click the 4th star to set a rating of 4, then click the "Submit Form" button. Verify the status shows "Form submitted with rating: 4".',
+        execute: async (page: Page) => {
+          // Click the 4th star inside the gym-rating shadow DOM
+          const star4 = await page.evaluateHandle(() => {
+            const el = document.querySelector('gym-rating');
+            return el?.shadowRoot?.querySelector('[data-value="4"]');
+          });
+          await (star4 as any).click();
+          await page.click('#gym-formassoc-form button[type="submit"]');
+          await page.waitForSelector('#formassoc-status.success', { timeout: 10000 });
+          const text = await page.textContent('#formassoc-status');
+          if (!text?.includes('rating: 4')) {
+            throw new Error(`FormAssociated: expected status to contain 'rating: 4', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'Toggle — Click to toggle ON',
+        goal: 'Find the autonomous toggle component (card 22) that says "OFF". Click it to toggle it ON. Verify the status shows "Toggle is ON" and the component\'s aria-pressed attribute is "true".',
+        execute: async (page: Page) => {
+          await page.click('#gym-toggle-el');
+          await page.waitForSelector('#toggle-status.success', { timeout: 10000 });
+          const text = await page.textContent('#toggle-status');
+          if (!text?.includes('ON')) {
+            throw new Error(`Toggle: expected status to contain 'ON', got '${text}'`);
+          }
+          const pressed = await page.getAttribute('#gym-toggle-el', 'aria-pressed');
+          if (pressed !== 'true') {
+            throw new Error(`Toggle: expected aria-pressed="true", got "${pressed}"`);
+          }
+        },
+      },
+      {
+        name: 'CustomizedBuiltin — Click counter 3 times',
+        goal: 'Find the customized built-in button (card 23) that says "Click me: 0". Click it 3 times. Verify the button text shows "Click me: 3" and the status shows "Counter reached 3 clicks!".',
+        execute: async (page: Page) => {
+          await page.click('#gym-counter-btn');
+          await page.click('#gym-counter-btn');
+          await page.click('#gym-counter-btn');
+          await page.waitForSelector('#custombuiltin-status.success', { timeout: 10000 });
+          const text = await page.textContent('#custombuiltin-status');
+          if (!text?.includes('3')) {
+            throw new Error(`CustomizedBuiltin: expected status to contain '3', got '${text}'`);
+          }
+          const btnText = await page.textContent('#gym-counter-btn');
+          if (!btnText?.includes('3')) {
+            throw new Error(`CustomizedBuiltin: expected button to show '3', got '${btnText}'`);
+          }
+        },
+      },
+      // === Section 5: Rendering/AX Gaps ===
+      {
+        name: 'SVGControl — Click the Go button',
+        goal: 'Find the SVG Composite Control (card 24) which contains two SVG buttons: "Go" (green) and "Stop" (red). Click the "Go" button inside the SVG. Verify the status shows "SVG action: Go".',
+        execute: async (page: Page) => {
+          await page.click('#svg-go-btn');
+          await page.waitForSelector('#svg-status.success', { timeout: 10000 });
+          const text = await page.textContent('#svg-status');
+          if (!text?.includes('Go')) {
+            throw new Error(`SVGControl: expected status to contain 'Go', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'CanvasWidget — Set gauge to 75',
+        goal: 'Find the Canvas-backed Widget (card 25). It has a number input labelled "Gauge value (0-100)" and a "Set" button. Clear the input, type "75", then click "Set". Verify the status shows "Canvas gauge set to 75%".',
+        execute: async (page: Page) => {
+          await page.fill('#canvas-value-input', '75');
+          await page.click('#canvas-set-btn');
+          await page.waitForSelector('#canvas-status.success', { timeout: 10000 });
+          const text = await page.textContent('#canvas-status');
+          if (!text?.includes('75')) {
+            throw new Error(`CanvasWidget: expected status to contain '75', got '${text}'`);
+          }
+        },
+      },
+      {
+        name: 'DragDrop — Drag item to drop zone',
+        goal: 'Find the Drag and Drop component (card 26). Drag the blue "Drag me" box into the "Drop here" zone. Verify the status shows "Drag and drop completed!" and the drop zone shows "Dropped!".',
+        execute: async (page: Page) => {
+          await page.dragAndDrop('#dnd-source', '#dnd-target');
+          await page.waitForSelector('#dnd-status.success', { timeout: 10000 });
+          const text = await page.textContent('#dnd-status');
+          if (!text?.includes('completed')) {
+            throw new Error(`DragDrop: expected status to contain 'completed', got '${text}'`);
+          }
+        },
+      },
       {
         name: 'Submit — Verify all components',
-        goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered (date, exercise, image, notes, hover reward, shadow membership ID, native date, time, datetime, range, nested code, closed code, dialog code).',
+        goal: 'Click the "Submit All" button. Verify the submission summary panel appears showing all the values you entered across all 26 components (original gym components plus color, blur email, input/change events, focus trap, slotted, delegates-focus, form rating, toggle, counter, SVG, canvas, drag-drop).',
         execute: async (page: Page) => {
           await page.click('#gym-submit');
           await page.waitForSelector('#result-panel.visible', { timeout: 10000 });
@@ -284,6 +473,18 @@ export class J00TheGym extends BaseJourney {
           if (parsed.nestedCode === '(not set)') throw new Error('Submit: nested code not recorded');
           if (parsed.closedCode === '(not set)') throw new Error('Submit: closed code not recorded');
           if (parsed.dialogCode === '(not set)') throw new Error('Submit: dialog code not recorded');
+          if (parsed.colorValue === '(not set)' || parsed.colorValue?.toLowerCase() !== '#00ff88') throw new Error('Submit: color not set to #00ff88');
+          if (parsed.blurEmail === '(not set)') throw new Error('Submit: blur email not recorded');
+          if (!parsed.inputChangeEvents || parsed.inputChangeEvents.input === 0 || parsed.inputChangeEvents.change === 0) throw new Error('Submit: input/change events not recorded');
+          if (parsed.focusTrapCode === '(not set)') throw new Error('Submit: focus trap code not recorded');
+          if (parsed.slottedValue === '(not set)') throw new Error('Submit: slotted value not recorded');
+          if (parsed.delegatesFocusValue === '(not set)') throw new Error('Submit: delegates-focus value not recorded');
+          if (!parsed.formRating || parsed.formRating < 1) throw new Error('Submit: form rating not set');
+          if (parsed.toggleState !== 'true') throw new Error('Submit: toggle not ON');
+          if (!parsed.counterClicks || parsed.counterClicks < 3) throw new Error('Submit: counter not reached 3');
+          if (!parsed.svgAction || parsed.svgAction === '(none)') throw new Error('Submit: SVG action not recorded');
+          if (parsed.canvasGauge !== 75) throw new Error('Submit: canvas gauge not 75');
+          if (parsed.dragDrop !== 'completed') throw new Error('Submit: drag-drop not completed');
         },
       },
     ];
