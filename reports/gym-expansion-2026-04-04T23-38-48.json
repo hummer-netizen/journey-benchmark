@@ -1,0 +1,488 @@
+[
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 88572,
+    "error": null,
+    "componentId": "time-input",
+    "componentNum": 9,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 96830,
+    "error": null,
+    "componentId": "time-input",
+    "componentNum": 9,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 96168,
+    "error": null,
+    "componentId": "time-input",
+    "componentNum": 9,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 93132,
+    "error": null,
+    "componentId": "datetime-local",
+    "componentNum": 10,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 12,
+    "timeMs": 77094,
+    "error": null,
+    "componentId": "datetime-local",
+    "componentNum": 10,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 95281,
+    "error": null,
+    "componentId": "datetime-local",
+    "componentNum": 10,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94855,
+    "error": null,
+    "componentId": "range-slider",
+    "componentNum": 11,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 102544,
+    "error": null,
+    "componentId": "range-slider",
+    "componentNum": 11,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 95049,
+    "error": null,
+    "componentId": "range-slider",
+    "componentNum": 11,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 84363,
+    "error": null,
+    "componentId": "nested-shadow",
+    "componentNum": 12,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 84292,
+    "error": null,
+    "componentId": "nested-shadow",
+    "componentNum": 12,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 85033,
+    "error": null,
+    "componentId": "nested-shadow",
+    "componentNum": 12,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 12,
+    "timeMs": 73258,
+    "error": null,
+    "componentId": "closed-shadow",
+    "componentNum": 13,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 8,
+    "timeMs": 57109,
+    "error": null,
+    "componentId": "closed-shadow",
+    "componentNum": 13,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 90919,
+    "error": null,
+    "componentId": "closed-shadow",
+    "componentNum": 13,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 85175,
+    "error": null,
+    "componentId": "dialog",
+    "componentNum": 14,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 74834,
+    "error": null,
+    "componentId": "dialog",
+    "componentNum": 14,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 85418,
+    "error": null,
+    "componentId": "dialog",
+    "componentNum": 14,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 10,
+    "timeMs": 66245,
+    "error": null,
+    "componentId": "color-picker",
+    "componentNum": 15,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 12,
+    "timeMs": 79551,
+    "error": null,
+    "componentId": "color-picker",
+    "componentNum": 15,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 12,
+    "timeMs": 89674,
+    "error": null,
+    "componentId": "color-picker",
+    "componentNum": 15,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 86681,
+    "error": null,
+    "componentId": "blur-validated",
+    "componentNum": 16,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 81486,
+    "error": null,
+    "componentId": "blur-validated",
+    "componentNum": 16,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 90184,
+    "error": null,
+    "componentId": "blur-validated",
+    "componentNum": 16,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 96981,
+    "error": null,
+    "componentId": "input-change",
+    "componentNum": 17,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94448,
+    "error": null,
+    "componentId": "input-change",
+    "componentNum": 17,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 102635,
+    "error": null,
+    "componentId": "input-change",
+    "componentNum": 17,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 74645,
+    "error": null,
+    "componentId": "focus-trap",
+    "componentNum": 18,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 76966,
+    "error": null,
+    "componentId": "focus-trap",
+    "componentNum": 18,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 84432,
+    "error": null,
+    "componentId": "focus-trap",
+    "componentNum": 18,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 88597,
+    "error": null,
+    "componentId": "slotted",
+    "componentNum": 19,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 91001,
+    "error": null,
+    "componentId": "slotted",
+    "componentNum": 19,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 91028,
+    "error": null,
+    "componentId": "slotted",
+    "componentNum": 19,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 89835,
+    "error": null,
+    "componentId": "delegates-focus",
+    "componentNum": 20,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 85550,
+    "error": null,
+    "componentId": "delegates-focus",
+    "componentNum": 20,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 88241,
+    "error": null,
+    "componentId": "delegates-focus",
+    "componentNum": 20,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 86796,
+    "error": null,
+    "componentId": "form-associated",
+    "componentNum": 21,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 88712,
+    "error": null,
+    "componentId": "form-associated",
+    "componentNum": 21,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 93017,
+    "error": null,
+    "componentId": "form-associated",
+    "componentNum": 21,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 4,
+    "timeMs": 27601,
+    "error": null,
+    "componentId": "toggle",
+    "componentNum": 22,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 7,
+    "timeMs": 41275,
+    "error": null,
+    "componentId": "toggle",
+    "componentNum": 22,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 36129,
+    "error": null,
+    "componentId": "toggle",
+    "componentNum": 22,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 7,
+    "timeMs": 42943,
+    "error": null,
+    "componentId": "customized-builtin",
+    "componentNum": 23,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 7,
+    "timeMs": 44148,
+    "error": null,
+    "componentId": "customized-builtin",
+    "componentNum": 23,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 9,
+    "timeMs": 53174,
+    "error": null,
+    "componentId": "customized-builtin",
+    "componentNum": 23,
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 7,
+    "timeMs": 45906,
+    "error": null,
+    "componentId": "svg-control",
+    "componentNum": 24,
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 38021,
+    "error": null,
+    "componentId": "svg-control",
+    "componentNum": 24,
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 6,
+    "timeMs": 37203,
+    "error": null,
+    "componentId": "svg-control",
+    "componentNum": 24,
+    "run": 3
+  },
+  {
+    "status": "FAIL",
+    "toolCalls": 10,
+    "timeMs": 57559,
+    "error": "LLM error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+    "componentId": "canvas-widget",
+    "componentNum": 25,
+    "run": 1
+  },
+  {
+    "status": "FAIL",
+    "toolCalls": 0,
+    "timeMs": 6535,
+    "error": "LLM error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+    "componentId": "canvas-widget",
+    "componentNum": 25,
+    "run": 2
+  },
+  {
+    "status": "FAIL",
+    "toolCalls": 0,
+    "timeMs": 6514,
+    "error": "LLM error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+    "componentId": "canvas-widget",
+    "componentNum": 25,
+    "run": 3
+  },
+  {
+    "status": "FAIL",
+    "toolCalls": 0,
+    "timeMs": 6478,
+    "error": "LLM error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+    "componentId": "drag-drop",
+    "componentNum": 26,
+    "run": 1
+  },
+  {
+    "status": "FAIL",
+    "toolCalls": 0,
+    "timeMs": 6459,
+    "error": "LLM error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+    "componentId": "drag-drop",
+    "componentNum": 26,
+    "run": 2
+  },
+  {
+    "status": "FAIL",
+    "toolCalls": 0,
+    "timeMs": 6528,
+    "error": "LLM error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+    "componentId": "drag-drop",
+    "componentNum": 26,
+    "run": 3
+  }
+]
