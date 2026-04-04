@@ -66,6 +66,42 @@ const COMPONENTS = [
     category: 'The Blockers',
     goal: `Navigate to ${GYM_URL}. Find section "8. Native Date Input" which has a real HTML5 date input (type="date") labelled "Select workout date". Set it to 2026-07-20. Verify the status shows "Native date selected: 2026-07-20".`,
   },
+  {
+    id: 'time-input',
+    name: 'Time Input (type=time)',
+    category: 'Native Inputs',
+    goal: `Navigate to ${GYM_URL}. Find section "9. Time Input" with a time input (type="time", id "gym-time") labelled "Select a time". Set it to 13:45. Verify the status shows "Time selected: 13:45".`,
+  },
+  {
+    id: 'datetime-local',
+    name: 'DateTime-Local Input',
+    category: 'Native Inputs',
+    goal: `Navigate to ${GYM_URL}. Find section "10. DateTime-Local Input" with a datetime-local input (id "gym-datetime") labelled "Select date and time". Set it to 2026-07-20T13:45. Verify the status shows "DateTime selected: 2026-07-20T13:45".`,
+  },
+  {
+    id: 'range-slider',
+    name: 'Range Slider',
+    category: 'Native Inputs',
+    goal: `Navigate to ${GYM_URL}. Find section "11. Range Slider" with a range input (id "gym-range") labelled "Set intensity (0-100)". Set its value to exactly 75 using either the slider or keyboard arrow keys. Verify the displayed value shows "75" and the status shows "Intensity set to 75!".`,
+  },
+  {
+    id: 'nested-shadow',
+    name: 'Nested Shadow Root',
+    category: 'Shadow DOM',
+    goal: `Navigate to ${GYM_URL}. Find section "12. Nested Shadow Root". There is an outer shadow host (blue border) containing an inner shadow host (yellow dashed border). Inside the inner host there is a text input with placeholder "e.g. DEEP-42" and a "Confirm" button. Type "DEEP-42" into the input and click "Confirm". Verify the status below shows "Nested confirmed: DEEP-42".`,
+  },
+  {
+    id: 'closed-shadow',
+    name: 'Closed Shadow Root',
+    category: 'Shadow DOM',
+    goal: `Navigate to ${GYM_URL}. Find section "13. Closed Shadow Root" which has a red-bordered component. Inside it there is an input with placeholder "Type here..." and a "Verify" button. This is a CLOSED shadow root (shadowRoot is null). Type "SECRET-99" into the input and click "Verify". Verify the status below shows "Closed verified: SECRET-99".`,
+  },
+  {
+    id: 'dialog-popover',
+    name: 'Dialog / Popover',
+    category: 'Top Layer',
+    goal: `Navigate to ${GYM_URL}. Find section "14. Dialog / Popover". Click the "Open Dialog" button to open a modal dialog. Inside the dialog, type "CONFIRM-OK" into the input labelled "Enter confirmation code" and click the green "Confirm" button. Verify the status message shows "Dialog confirmed: CONFIRM-OK".`,
+  },
 ];
 
 async function runOne(component, runNum, proxyPort) {

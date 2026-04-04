@@ -1,0 +1,146 @@
+[
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 107457,
+    "error": null,
+    "componentId": "time-input",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94814,
+    "error": null,
+    "componentId": "time-input",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 109261,
+    "error": null,
+    "componentId": "time-input",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 102389,
+    "error": null,
+    "componentId": "datetime-local",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 102029,
+    "error": null,
+    "componentId": "datetime-local",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 109610,
+    "error": null,
+    "componentId": "datetime-local",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 108605,
+    "error": null,
+    "componentId": "range-slider",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 93605,
+    "error": null,
+    "componentId": "range-slider",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 102556,
+    "error": null,
+    "componentId": "range-slider",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 78343,
+    "error": null,
+    "componentId": "nested-shadow",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 97736,
+    "error": null,
+    "componentId": "nested-shadow",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 88385,
+    "error": null,
+    "componentId": "nested-shadow",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 96566,
+    "error": null,
+    "componentId": "closed-shadow",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 95832,
+    "error": null,
+    "componentId": "closed-shadow",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 10,
+    "timeMs": 72825,
+    "error": null,
+    "componentId": "closed-shadow",
+    "run": 3
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 90595,
+    "error": null,
+    "componentId": "dialog-popover",
+    "run": 1
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 94052,
+    "error": null,
+    "componentId": "dialog-popover",
+    "run": 2
+  },
+  {
+    "status": "PASS",
+    "toolCalls": 15,
+    "timeMs": 90505,
+    "error": null,
+    "componentId": "dialog-popover",
+    "run": 3
+  }
+]
