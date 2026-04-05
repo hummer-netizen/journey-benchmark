@@ -39,37 +39,47 @@ export abstract class BaseJourney implements Journey {
 
     let handoffReason: string | undefined;
 
+    // Use goal-aware execution for L4 (Agentic Webfuse)
+    const isGoalProvider = provider && isGoalAware(provider);
+
     for (let i = 0; i < this.steps.length; i++) {
       const step = this.steps[i];
       if (!step) continue;
 
-      // Use the LLM agent when the provider is goal-aware and the step has a goal (Track C)
-      const useAgent = provider && isGoalAware(provider) && step.goal;
+      try {
+        // Goal-aware execution when step has a goal (L4 / Track C)
+        const useAgent = isGoalProvider && step.goal;
 
-      if (useAgent) {
-        // Goal-aware execution with handoff support
-        const goalProvider = provider as AutomationProvider & GoalAwareProvider;
-        const result = await collector.measureWithHandoff(i, step.name, async () => {
-          const raw = await goalProvider.executeGoal(page, step.goal!);
-          return normaliseGoalResult(raw);
-        });
-        if (result.status === 'handoff') {
-          status = 'handoff';
-          handoffReason = result.handoffReason;
-          break;
+        if (useAgent) {
+          const goalProvider = provider as AutomationProvider & GoalAwareProvider;
+          const result = await collector.measureWithHandoff(i, step.name, async () => {
+            const raw = await goalProvider.executeGoal(page, step.goal!);
+            return normaliseGoalResult(raw);
+          });
+          if (result.status === 'handoff') {
+            status = 'handoff';
+            handoffReason = result.handoffReason;
+            break;
+          }
+          if (result.status === 'failed') {
+            status = 'failed';
+            errorMessage = result.errorMessage;
+            break;
+          }
+        } else {
+          // Scripted execution (L1, L2, L3)
+          const result = await collector.measure(i, step.name, () => step.execute(page));
+          if (result.status === 'failed') {
+            status = 'failed';
+            errorMessage = result.errorMessage;
+            break;
+          }
         }
-        if (result.status === 'failed') {
-          status = 'failed';
-          errorMessage = result.errorMessage;
-          break;
-        }
-      } else {
-        const result = await collector.measure(i, step.name, () => step.execute(page));
-        if (result.status === 'failed') {
-          status = 'failed';
-          errorMessage = result.errorMessage;
-          break;
-        }
+      } catch (err) {
+        // Fail-fast assumption: Treat FLAKY or failed as Total Failure
+        status = 'failed';
+        errorMessage = err instanceof Error ? err.message : String(err);
+        break;
       }
     }
 

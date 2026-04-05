@@ -64,6 +64,16 @@ export interface JourneyResult {
   finishedAt: string;
 }
 
+/** Execution level for the diagnostic framework */
+export type ExecutionLevel = 1 | 2 | 3 | 4;
+
+/** Metadata for a diagnostic run */
+export interface DiagnosticInfo {
+  level: ExecutionLevel;
+  /** Label for the level (e.g. "L1: Scripted Playwright") */
+  levelLabel: string;
+}
+
 /** Result of a complete benchmark run */
 export interface RunResult {
   runId?: number;
@@ -76,6 +86,8 @@ export interface RunResult {
   passed: number;
   failed: number;
   journeys: JourneyResult[];
+  /** Optional diagnostic info for 4-level framework */
+  diagnostic?: DiagnosticInfo;
 }
 
 /** A single journey step definition */

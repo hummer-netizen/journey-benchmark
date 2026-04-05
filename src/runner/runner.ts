@@ -4,6 +4,8 @@ import type { AutomationProvider } from '../webfuse/provider.js';
 import { MetricCollector } from '../metrics/collector.js';
 import { startTrace, stopTrace, type TraceConfig } from './trace.js';
 
+import type { ExecutionLevel, DiagnosticInfo } from '../types.js';
+
 export interface RunnerOptions {
   provider: AutomationProvider;
   journeys: Journey[];
@@ -11,6 +13,8 @@ export interface RunnerOptions {
   site: string;
   /** Playwright trace/HAR/screenshot capture settings */
   trace?: TraceConfig;
+  /** Optional execution level for the 4-level diagnostic framework */
+  level?: ExecutionLevel;
   /** Called when a journey completes */
   onJourneyComplete?: (result: JourneyResult) => void;
 }
@@ -123,6 +127,11 @@ export class BenchmarkRunner {
     const passed = journeyResults.filter(r => r.status === 'passed').length;
     const failed = journeyResults.length - passed;
 
+    const diagnostic: DiagnosticInfo | undefined = this.options.level ? {
+      level: this.options.level,
+      levelLabel: this.getLevelLabel(this.options.level)
+    } : undefined;
+
     return {
       startedAt,
       finishedAt: new Date().toISOString(),
@@ -133,6 +142,17 @@ export class BenchmarkRunner {
       passed,
       failed,
       journeys: journeyResults,
+      diagnostic
     };
+  }
+
+  private getLevelLabel(level: ExecutionLevel): string {
+    switch (level) {
+      case 1: return 'L1: Scripted Playwright (Baseline)';
+      case 2: return 'L2: LLM Playwright (CDP)';
+      case 3: return 'L3: Scripted Webfuse (Direct API)';
+      case 4: return 'L4: Agentic Webfuse (Native MCP)';
+      default: return `L${level}: Unknown`;
+    }
   }
 }
