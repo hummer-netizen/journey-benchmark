@@ -411,6 +411,90 @@ export class WebfuseProvider implements AutomationProvider {
         }
       },
 
+      hover: async (selector: string) => {
+        const target = await resolveTarget(selector);
+        console.log(`  [Webfuse/hover] ${selector} → target: ${target}`);
+        await api.mouseMove(sessionId, target);
+        await sleep(500);
+      },
+
+      getAttribute: async (selector: string, name: string) => {
+        const dom = await getDomWithWfIds();
+        return extractAttr(dom, selector, name);
+      },
+
+      evaluateHandle: async (_fn: unknown) => {
+        // L3 Platform Gap: No JS execution in Webfuse API.
+        // Shadow DOM piercing requires evaluate() which is unavailable.
+        // Return a stub handle that will fail gracefully.
+        console.log(`  [Webfuse/L3] evaluateHandle: PLATFORM_GAP — no JS execution available`);
+        const stub: Record<string, unknown> = {
+          fill: async () => { throw new Error('PLATFORM_GAP: evaluateHandle target not accessible (shadow DOM)'); },
+          click: async () => { throw new Error('PLATFORM_GAP: evaluateHandle target not accessible (shadow DOM)'); },
+          type: async () => { throw new Error('PLATFORM_GAP: evaluateHandle target not accessible (shadow DOM)'); },
+          press: async () => { throw new Error('PLATFORM_GAP: evaluateHandle target not accessible (shadow DOM)'); },
+          textContent: async () => null,
+        };
+        return stub;
+      },
+
+      getByLabel: (label: string) => {
+        // Attempt to find elements by aria-label in domSnapshot
+        const findByLabel = async (): Promise<string | null> => {
+          const dom = await getDomWithWfIds();
+          // Match aria-label="<label>" and extract nearest wf-id
+          const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const pattern = new RegExp(`wf-id="(\\d+)"[^>]*aria-label="${escapedLabel}"|aria-label="${escapedLabel}"[^>]*wf-id="(\\d+)"`, 'i');
+          const match = dom.match(pattern);
+          if (match) return `[wf-id="${match[1] || match[2]}"]`;
+          // Fallback: try placeholder text
+          const placeholderPattern = new RegExp(`wf-id="(\\d+)"[^>]*placeholder="${escapedLabel}"|placeholder="${escapedLabel}"[^>]*wf-id="(\\d+)"`, 'i');
+          const pm = dom.match(placeholderPattern);
+          if (pm) return `[wf-id="${pm[1] || pm[2]}"]`;
+          return null;
+        };
+        return {
+          fill: async (value: string) => {
+            const target = await findByLabel();
+            if (!target) throw new Error(`PLATFORM_GAP: getByLabel("${label}") — element not found in domSnapshot`);
+            console.log(`  [Webfuse/getByLabel] "${label}" → ${target}`);
+            await api.click(sessionId, target);
+            await sleep(300);
+            await api.type(sessionId, target, value, { overwrite: true });
+            await api.keyPress(sessionId, target, 'Tab');
+            await sleep(300);
+          },
+          click: async () => {
+            const target = await findByLabel();
+            if (!target) throw new Error(`PLATFORM_GAP: getByLabel("${label}") — element not found in domSnapshot`);
+            console.log(`  [Webfuse/getByLabel] "${label}" → ${target}`);
+            await api.click(sessionId, target);
+            await sleep(500);
+          },
+        };
+      },
+
+      dragAndDrop: async (sourceSelector: string, targetSelector: string) => {
+        const source = await resolveTarget(sourceSelector);
+        const target = await resolveTarget(targetSelector);
+        console.log(`  [Webfuse/dragAndDrop] ${sourceSelector} → ${targetSelector}`);
+        // Webfuse has no native drag-and-drop API.
+        // Attempt: mouseMove to source, mouseDown, mouseMove to target, mouseUp
+        // This may not work because HTML5 DnD requires specific event sequences.
+        try {
+          await api.mouseMove(sessionId, source);
+          await sleep(200);
+          await api.click(sessionId, source, { button: 'left' });
+          await sleep(200);
+          await api.mouseMove(sessionId, target);
+          await sleep(200);
+          await api.click(sessionId, target);
+          await sleep(500);
+        } catch (err) {
+          throw new Error(`TOOL_GAP: dragAndDrop not natively supported — ${err instanceof Error ? err.message : err}`);
+        }
+      },
+
       $: async (selector: string) => {
         const dom = await getDomWithWfIds();
         return selectorIn(dom, selector) ? makeHandle(selector) : null;

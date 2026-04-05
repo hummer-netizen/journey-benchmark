@@ -31,6 +31,7 @@ program
   .description('Browser automation benchmark for web journeys (shopping, flight booking, auth flows, government forms)')
   .version('4.0.0')
   .option('--provider <type>', 'Automation provider: direct | webfuse | webfuse-mcp | browser-use', 'direct')
+  .option('--level <n>', 'Execution level: 1=Playwright, 2=LLM+Playwright, 3=Scripted Webfuse, 4=Agentic Webfuse')
   .option('--journeys <list>', 'Comma-separated journey IDs to run (e.g. J01,J04,J05,J08,J09,J12,J14,J17)', 'J01,J04,J05,J08,J09,J12,J14,J17')
   .option('--site <type>', 'Target site type: webarena | prestashop | magento', 'webarena')
   .option('--shop-url <url>', 'Override target shop URL', '')
@@ -48,6 +49,23 @@ program
   .option('--repro-dir <dir>', 'Output directory for repro HTML files', path.join(__dirname, '..', 'repros'))
   // TODO: WebfuseProvider carry-over for S4.7 — requires WEBFUSE_API_KEY env var
   .action(async (options) => {
+    // --level flag maps to provider automatically
+    if (options.level) {
+      const levelMap: Record<string, string> = {
+        '1': 'direct',         // L1: Scripted Playwright
+        '2': 'browser-use',    // L2: LLM + Playwright CDP
+        '3': 'webfuse',        // L3: Scripted Webfuse (no LLM)
+        '4': 'webfuse-mcp',    // L4: Agentic Webfuse (LLM + MCP)
+      };
+      const mapped = levelMap[options.level];
+      if (!mapped) {
+        console.error(`Invalid --level: ${options.level}. Must be 1, 2, 3, or 4.`);
+        process.exit(1);
+      }
+      options.provider = mapped;
+      process.env['EXECUTION_LEVEL'] = options.level;
+    }
+
     process.env['AUTOMATION_PROVIDER'] = options.provider;
     process.env['SITE_TYPE'] = options.site;
     if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl;
@@ -100,8 +118,9 @@ program
       return;
     }
 
+    const levelLabel = options.level ? `L${options.level}` : null;
     console.log(`\nJourney Benchmark`);
-    console.log(`   Provider: ${options.provider}`);
+    console.log(`   Provider: ${options.provider}${levelLabel ? ` (${levelLabel})` : ''}`);
     console.log(`   Journeys: ${journeyIds.join(', ')}`);
     console.log(`   Site:     ${options.site}`);
     console.log(`   Target:   ${config.baseUrl}`);
