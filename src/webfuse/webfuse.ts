@@ -645,10 +645,13 @@ export class WebfuseProvider implements AutomationProvider {
   getActiveSessionId(): string | null { return this._activeSessionId; }
 
   async close(): Promise<void> {
-    // Only terminate sessions we created
-    if (this._activeSessionId && this._sessionOwned) {
+    // Only terminate sessions we created (unless diagnostic mode preserves them)
+    const diagnosticMode = process.env['DIAGNOSTIC_MODE'] === '1';
+    if (this._activeSessionId && this._sessionOwned && !diagnosticMode) {
       console.log(`  [Webfuse] Terminating session: ${this._activeSessionId}`);
       await this.terminateSession(this._activeSessionId);
+    } else if (this._activeSessionId && diagnosticMode) {
+      console.log(`  [Webfuse] DIAGNOSTIC MODE: Session preserved: ${this._activeSessionId}`);
     }
     // Log audit summary
     if (this._automationApi) {
