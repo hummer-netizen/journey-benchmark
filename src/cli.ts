@@ -52,10 +52,10 @@ program
     // --level flag maps to provider automatically
     if (options.level) {
       const levelMap: Record<string, string> = {
-        '1': 'direct',         // L1: Scripted Playwright
-        '2': 'browser-use',    // L2: LLM + Playwright CDP
-        '3': 'webfuse',        // L3: Scripted Webfuse (no LLM)
-        '4': 'webfuse-mcp',    // L4: Agentic Webfuse (LLM + MCP)
+        '1': 'direct',           // L1: Scripted Playwright
+        '2': 'llm-playwright',   // L2: LLM + Playwright (CDP)
+        '3': 'webfuse',          // L3: Scripted Webfuse (no LLM)
+        '4': 'webfuse-mcp',      // L4: Agentic Webfuse (LLM + MCP)
       };
       const mapped = levelMap[options.level];
       if (!mapped) {
