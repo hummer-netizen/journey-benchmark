@@ -2,16 +2,11 @@ import { Command } from 'commander';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createProvider } from './webfuse/index.js';
-import { BenchmarkRunner } from './runner/runner.js';
-import { openDatabase, insertRun } from './db/index.js';
-import { generateJsonReport, generateMarkdownReport } from './reporter/index.js';
+import { GymBenchmarkRunner } from './runner/gym-benchmark.js';
 import { GYM_CONFIG, resolveGymUrl } from './journeys/config.js';
-import { J00TheGym } from './journeys/j00-the-gym.js';
-import type { Journey } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const reportsDir = path.join(__dirname, '..', 'reports');
-const dbPath = path.join(__dirname, '..', 'benchmark.db');
 
 const program = new Command();
 
@@ -24,7 +19,6 @@ program
   .option('--output <dir>', 'Output directory for evidence files', reportsDir)
   .option('--headless', 'Run browser in headless mode', true)
   .option('--no-headless', 'Run browser in non-headless mode')
-  .option('--db <path>', 'Path to SQLite database', dbPath)
   .option('--diagnostic', 'Preserve Webfuse sessions (no termination)', false)
   .option('--llm-proxy-port <port>', 'Port for the in-process LLM proxy (default: 8999)', '8999')
   .action(async (options) => {
@@ -48,28 +42,24 @@ program
     const proxyPort = parseInt(options.llmProxyPort ?? '8999', 10);
     const runs = parseInt(options.runs ?? '3', 10);
 
-    // Resolve Gym URL
     resolveGymUrl();
     const gymUrl = process.env['GYM_URL'] ??
       (mode === 'M1' || mode === 'M2'
         ? `file://${path.resolve(__dirname, '..', 'journeys', 'journey-0', 'index.html')}`
         : GYM_CONFIG.baseUrl);
 
-    const allJourneys: Record<string, Journey> = {
-      J00: new J00TheGym({ baseUrl: gymUrl }),
-    };
-
-    const journey = allJourneys['J00']!;
     const modesToRun = mode === 'ALL' ? ['M1', 'M2', 'M3', 'M4'] : [mode];
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const outputDir = path.join(options.output, `benchmark-${ts}`);
 
     console.log(`\n4-Mode Gym Benchmark`);
     console.log(`   Mode(s):  ${modesToRun.join(', ')}`);
     console.log(`   Runs:     ${runs}`);
     console.log(`   Gym URL:  ${gymUrl}`);
+    console.log(`   Output:   ${outputDir}`);
     console.log(`   Headless: ${options.headless}`);
     if (options.diagnostic) console.log(`   Diagnostic: ON (sessions preserved)`);
 
-    // Run each mode sequentially
     for (const currentMode of modesToRun) {
       const providerName = modeMap[currentMode]!;
       process.env['AUTOMATION_PROVIDER'] = providerName;
@@ -82,38 +72,24 @@ program
         continue;
       }
 
-      console.log(`\n--- ${currentMode} (${providerName}) ---`);
-
-      const runner = new BenchmarkRunner({
+      const runner = new GymBenchmarkRunner({
+        mode: currentMode,
         provider,
-        journeys: [journey],
-        baseUrl: gymUrl,
-        site: 'gym',
+        gymUrl,
+        runs,
+        outputDir,
+        diagnostic: options.diagnostic,
       });
 
       try {
-        const result = await runner.run();
-
-        const db = openDatabase(options.db);
-        const dbRunId = insertRun(db, result);
-        db.close();
-        console.log(`  [${currentMode}] Saved to database (run #${dbRunId})`);
-
-        const jsonPath = generateJsonReport(result, options.output);
-        const mdPath = generateMarkdownReport(result, options.output);
-        console.log(`  [${currentMode}] JSON: ${jsonPath}`);
-        console.log(`  [${currentMode}] Markdown: ${mdPath}`);
-
-        console.log(`  [${currentMode}] Passed: ${result.passed}/${result.totalJourneys}`);
+        await runner.run();
       } catch (err) {
-        console.error(`  [${currentMode}] Error: ${err instanceof Error ? err.message : err}`);
-      } finally {
-        await provider.close().catch(() => {});
+        console.error(`  [${currentMode}] Fatal: ${err instanceof Error ? err.message : err}`);
       }
     }
 
     console.log(`\n=== Benchmark Complete ===`);
+    console.log(`Evidence: ${outputDir}/`);
   });
-
 
 program.parse();
