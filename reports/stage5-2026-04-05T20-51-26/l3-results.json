@@ -1,0 +1,281 @@
+{
+  "startedAt": "2026-04-05T20:53:05.151Z",
+  "finishedAt": "2026-04-05T20:55:19.655Z",
+  "provider": "WebfuseProvider",
+  "site": "webarena",
+  "targetUrl": "https://webarena-shop.webfuse.it/",
+  "totalJourneys": 9,
+  "passed": 2,
+  "failed": 7,
+  "journeys": [
+    {
+      "journeyId": "J00",
+      "journeyName": "The Gym — Component Diagnostic",
+      "status": "failed",
+      "executionTimeMs": 20404,
+      "partialCompletion": 0.14285714285714285,
+      "stepsTotal": 28,
+      "stepsCompleted": 4,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to The Gym",
+          "status": "passed",
+          "executionTimeMs": 728
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "DatePicker — Select a date",
+          "status": "passed",
+          "executionTimeMs": 3801
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Select — Choose an exercise",
+          "status": "passed",
+          "executionTimeMs": 1065
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "ContextMenu — Right-click and choose action",
+          "status": "passed",
+          "executionTimeMs": 3645
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "ClickableImage — Select an image",
+          "status": "failed",
+          "executionTimeMs": 11165,
+          "errorMessage": "Timeout waiting for selector: #image-status.success"
+        }
+      ],
+      "errorMessage": "Timeout waiting for selector: #image-status.success",
+      "startedAt": "2026-04-05T20:53:11.254Z",
+      "finishedAt": "2026-04-05T20:53:31.658Z"
+    },
+    {
+      "journeyId": "J01",
+      "journeyName": "Simple Product Purchase",
+      "status": "error",
+      "executionTimeMs": 0,
+      "partialCompletion": 0,
+      "stepsTotal": 8,
+      "stepsCompleted": 0,
+      "steps": [],
+      "errorMessage": "Target unreachable: https://webarena-shop.webfuse.it/",
+      "startedAt": "2026-04-05T20:53:31.717Z",
+      "finishedAt": "2026-04-05T20:53:31.717Z"
+    },
+    {
+      "journeyId": "J04",
+      "journeyName": "Cart Recovery (Expired Session)",
+      "status": "error",
+      "executionTimeMs": 0,
+      "partialCompletion": 0,
+      "stepsTotal": 7,
+      "stepsCompleted": 0,
+      "steps": [],
+      "errorMessage": "Target unreachable: https://webarena-shop.webfuse.it/",
+      "startedAt": "2026-04-05T20:53:31.717Z",
+      "finishedAt": "2026-04-05T20:53:31.717Z"
+    },
+    {
+      "journeyId": "J05",
+      "journeyName": "Flight Search & Booking",
+      "status": "failed",
+      "executionTimeMs": 22069,
+      "partialCompletion": 0.375,
+      "stepsTotal": 8,
+      "stepsCompleted": 3,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to flight app homepage",
+          "status": "passed",
+          "executionTimeMs": 455
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Select origin airport",
+          "status": "passed",
+          "executionTimeMs": 865
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Select destination airport",
+          "status": "passed",
+          "executionTimeMs": 868
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Select departure date and search",
+          "status": "failed",
+          "executionTimeMs": 19881,
+          "errorMessage": "Timeout waiting for selector: .flight-card, p"
+        }
+      ],
+      "errorMessage": "Timeout waiting for selector: .flight-card, p",
+      "startedAt": "2026-04-05T20:53:37.696Z",
+      "finishedAt": "2026-04-05T20:53:59.765Z"
+    },
+    {
+      "journeyId": "J08",
+      "journeyName": "Account Registration + Email Verify",
+      "status": "passed",
+      "executionTimeMs": 17146,
+      "partialCompletion": 1,
+      "stepsTotal": 6,
+      "stepsCompleted": 6,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to registration page",
+          "status": "passed",
+          "executionTimeMs": 456
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Fill registration form",
+          "status": "passed",
+          "executionTimeMs": 7611
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Submit registration",
+          "status": "passed",
+          "executionTimeMs": 1748
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Retrieve verification email from MailPit",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Visit email verification link",
+          "status": "passed",
+          "executionTimeMs": 320
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Verify account is active (login)",
+          "status": "passed",
+          "executionTimeMs": 6998
+        }
+      ],
+      "startedAt": "2026-04-05T20:54:05.706Z",
+      "finishedAt": "2026-04-05T20:54:22.852Z"
+    },
+    {
+      "journeyId": "J09",
+      "journeyName": "Password Reset",
+      "status": "passed",
+      "executionTimeMs": 18578,
+      "partialCompletion": 1,
+      "stepsTotal": 7,
+      "stepsCompleted": 7,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Setup test account (register + verify)",
+          "status": "passed",
+          "executionTimeMs": 149
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Navigate to forgot password page",
+          "status": "passed",
+          "executionTimeMs": 407
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Enter email and request reset",
+          "status": "passed",
+          "executionTimeMs": 3792
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Retrieve reset email from MailPit",
+          "status": "passed",
+          "executionTimeMs": 10
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Visit password reset link",
+          "status": "passed",
+          "executionTimeMs": 287
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Set new password",
+          "status": "passed",
+          "executionTimeMs": 7302
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify login with new password",
+          "status": "passed",
+          "executionTimeMs": 6631
+        }
+      ],
+      "startedAt": "2026-04-05T20:54:28.749Z",
+      "finishedAt": "2026-04-05T20:54:47.327Z"
+    },
+    {
+      "journeyId": "J12",
+      "journeyName": "Government Long Form (4-page)",
+      "status": "failed",
+      "executionTimeMs": 10195,
+      "partialCompletion": 0,
+      "stepsTotal": 12,
+      "stepsCompleted": 0,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to gov-forms homepage",
+          "status": "failed",
+          "executionTimeMs": 10195,
+          "errorMessage": "Timeout waiting for selector: #start-application"
+        }
+      ],
+      "errorMessage": "Timeout waiting for selector: #start-application",
+      "startedAt": "2026-04-05T20:54:53.271Z",
+      "finishedAt": "2026-04-05T20:55:03.466Z"
+    },
+    {
+      "journeyId": "J14",
+      "journeyName": "Product Comparison",
+      "status": "error",
+      "executionTimeMs": 0,
+      "partialCompletion": 0,
+      "stepsTotal": 8,
+      "stepsCompleted": 0,
+      "steps": [],
+      "errorMessage": "Target unreachable: https://webarena-shop.webfuse.it/",
+      "startedAt": "2026-04-05T20:55:03.466Z",
+      "finishedAt": "2026-04-05T20:55:03.466Z"
+    },
+    {
+      "journeyId": "J17",
+      "journeyName": "Return/Refund Request",
+      "status": "failed",
+      "executionTimeMs": 10176,
+      "partialCompletion": 0,
+      "stepsTotal": 9,
+      "stepsCompleted": 0,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to return portal",
+          "status": "failed",
+          "executionTimeMs": 10175,
+          "errorMessage": "Timeout waiting for selector: #login-form"
+        }
+      ],
+      "errorMessage": "Timeout waiting for selector: #login-form",
+      "startedAt": "2026-04-05T20:55:09.479Z",
+      "finishedAt": "2026-04-05T20:55:19.655Z"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+
+Journey Benchmark
+   Provider: direct (L1)
+   Journeys: J00, J01, J04, J05, J08, J09, J12, J14, J17
+   Site:     webarena
+   Target:   http://localhost:7770
+   Headless: true
+
+> Running J00: The Gym — Component Diagnostic
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:7770/
+Call log:
+  - navigating to "http://localhost:7770/", waiting until "domcontentloaded"
+
+
+> Running J01: Simple Product Purchase
+  Warning: Target http://localhost:7770 is not reachable.
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: Target unreachable: http://localhost:7770
+
+> Running J04: Cart Recovery (Expired Session)
+  Warning: Target http://localhost:7770 is not reachable.
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: Target unreachable: http://localhost:7770
+
+> Running J05: Flight Search & Booking
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:7770/
+Call log:
+  - navigating to "http://localhost:7770/", waiting until "domcontentloaded"
+
+
+> Running J08: Account Registration + Email Verify
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:7770/
+Call log:
+  - navigating to "http://localhost:7770/", waiting until "domcontentloaded"
+
+
+> Running J09: Password Reset
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:7770/
+Call log:
+  - navigating to "http://localhost:7770/", waiting until "domcontentloaded"
+
+
+> Running J12: Government Long Form (4-page)
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:7770/
+Call log:
+  - navigating to "http://localhost:7770/", waiting until "domcontentloaded"
+
+
+> Running J14: Product Comparison
+  Warning: Target http://localhost:7770 is not reachable.
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: Target unreachable: http://localhost:7770
+
+> Running J17: Return/Refund Request
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:7770/
+Call log:
+  - navigating to "http://localhost:7770/", waiting until "domcontentloaded"
+
+
+Saved to database (run #209)
+JSON report: reports/stage5-2026-04-05T20-30-47/report_2026-04-05_20-30-47.json
+Markdown report: reports/stage5-2026-04-05T20-30-47/report_2026-04-05_20-30-47.md
+
+---------------------------------
+Passed:  0/9
+Failed:  9/9
+Success: 0.0%

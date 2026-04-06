@@ -1,0 +1,491 @@
+{
+  "startedAt": "2026-04-05T20:33:24.650Z",
+  "finishedAt": "2026-04-05T20:35:02.666Z",
+  "provider": "DirectProvider",
+  "site": "webarena",
+  "targetUrl": "http://localhost:8080",
+  "totalJourneys": 9,
+  "passed": 5,
+  "failed": 4,
+  "journeys": [
+    {
+      "journeyId": "J00",
+      "journeyName": "The Gym — Component Diagnostic",
+      "status": "failed",
+      "executionTimeMs": 30578,
+      "partialCompletion": 0.4642857142857143,
+      "stepsTotal": 28,
+      "stepsCompleted": 13,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to The Gym",
+          "status": "passed",
+          "executionTimeMs": 178
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "DatePicker — Select a date",
+          "status": "passed",
+          "executionTimeMs": 32
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Select — Choose an exercise",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "ContextMenu — Right-click and choose action",
+          "status": "passed",
+          "executionTimeMs": 69
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "ClickableImage — Select an image",
+          "status": "passed",
+          "executionTimeMs": 39
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Textarea — Enter workout notes",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "HoverState — Reveal and click",
+          "status": "passed",
+          "executionTimeMs": 83
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "ShadowDOM — Enter membership ID",
+          "status": "passed",
+          "executionTimeMs": 54
+        },
+        {
+          "stepIndex": 8,
+          "stepName": "NativeDate — Select a date with type=date",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 9,
+          "stepName": "TimeInput — Select a time",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 10,
+          "stepName": "DateTimeLocal — Select date and time",
+          "status": "passed",
+          "executionTimeMs": 12
+        },
+        {
+          "stepIndex": 11,
+          "stepName": "RangeSlider — Set intensity to 75",
+          "status": "passed",
+          "executionTimeMs": 12
+        },
+        {
+          "stepIndex": 12,
+          "stepName": "NestedShadow — Type code and confirm",
+          "status": "passed",
+          "executionTimeMs": 46
+        },
+        {
+          "stepIndex": 13,
+          "stepName": "ClosedShadow — Enter secret code",
+          "status": "failed",
+          "executionTimeMs": 30001,
+          "errorMessage": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByLabel('Secret code input')\n"
+        }
+      ],
+      "errorMessage": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByLabel('Secret code input')\n",
+      "startedAt": "2026-04-05T20:33:25.003Z",
+      "finishedAt": "2026-04-05T20:33:55.581Z"
+    },
+    {
+      "journeyId": "J01",
+      "journeyName": "Simple Product Purchase",
+      "status": "failed",
+      "executionTimeMs": 20107,
+      "partialCompletion": 0,
+      "stepsTotal": 8,
+      "stepsCompleted": 0,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to homepage",
+          "status": "failed",
+          "executionTimeMs": 20107,
+          "errorMessage": "page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('#search') to be visible\n"
+        }
+      ],
+      "errorMessage": "page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('#search') to be visible\n",
+      "startedAt": "2026-04-05T20:33:55.886Z",
+      "finishedAt": "2026-04-05T20:34:15.993Z"
+    },
+    {
+      "journeyId": "J04",
+      "journeyName": "Cart Recovery (Expired Session)",
+      "status": "failed",
+      "executionTimeMs": 20099,
+      "partialCompletion": 0,
+      "stepsTotal": 7,
+      "stepsCompleted": 0,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to homepage",
+          "status": "failed",
+          "executionTimeMs": 20099,
+          "errorMessage": "page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('#search') to be visible\n"
+        }
+      ],
+      "errorMessage": "page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('#search') to be visible\n",
+      "startedAt": "2026-04-05T20:34:16.198Z",
+      "finishedAt": "2026-04-05T20:34:36.297Z"
+    },
+    {
+      "journeyId": "J05",
+      "journeyName": "Flight Search & Booking",
+      "status": "passed",
+      "executionTimeMs": 3307,
+      "partialCompletion": 1,
+      "stepsTotal": 8,
+      "stepsCompleted": 8,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to flight app homepage",
+          "status": "passed",
+          "executionTimeMs": 47
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Select origin airport",
+          "status": "passed",
+          "executionTimeMs": 13
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Select destination airport",
+          "status": "passed",
+          "executionTimeMs": 4
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Select departure date and search",
+          "status": "passed",
+          "executionTimeMs": 75
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Select a flight from results",
+          "status": "passed",
+          "executionTimeMs": 3039
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Fill passenger details",
+          "status": "passed",
+          "executionTimeMs": 34
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Confirm booking",
+          "status": "passed",
+          "executionTimeMs": 70
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Verify booking confirmation",
+          "status": "passed",
+          "executionTimeMs": 25
+        }
+      ],
+      "startedAt": "2026-04-05T20:34:36.519Z",
+      "finishedAt": "2026-04-05T20:34:39.826Z"
+    },
+    {
+      "journeyId": "J08",
+      "journeyName": "Account Registration + Email Verify",
+      "status": "passed",
+      "executionTimeMs": 325,
+      "partialCompletion": 1,
+      "stepsTotal": 6,
+      "stepsCompleted": 6,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to registration page",
+          "status": "passed",
+          "executionTimeMs": 39
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Fill registration form",
+          "status": "passed",
+          "executionTimeMs": 22
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Submit registration",
+          "status": "passed",
+          "executionTimeMs": 123
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Retrieve verification email from MailPit",
+          "status": "passed",
+          "executionTimeMs": 15
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Visit email verification link",
+          "status": "passed",
+          "executionTimeMs": 32
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Verify account is active (login)",
+          "status": "passed",
+          "executionTimeMs": 94
+        }
+      ],
+      "startedAt": "2026-04-05T20:34:40.052Z",
+      "finishedAt": "2026-04-05T20:34:40.377Z"
+    },
+    {
+      "journeyId": "J09",
+      "journeyName": "Password Reset",
+      "status": "passed",
+      "executionTimeMs": 430,
+      "partialCompletion": 1,
+      "stepsTotal": 7,
+      "stepsCompleted": 7,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Setup test account (register + verify)",
+          "status": "passed",
+          "executionTimeMs": 74
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Navigate to forgot password page",
+          "status": "passed",
+          "executionTimeMs": 28
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Enter email and request reset",
+          "status": "passed",
+          "executionTimeMs": 123
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Retrieve reset email from MailPit",
+          "status": "passed",
+          "executionTimeMs": 9
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Visit password reset link",
+          "status": "passed",
+          "executionTimeMs": 24
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Set new password",
+          "status": "passed",
+          "executionTimeMs": 87
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify login with new password",
+          "status": "passed",
+          "executionTimeMs": 85
+        }
+      ],
+      "startedAt": "2026-04-05T20:34:40.595Z",
+      "finishedAt": "2026-04-05T20:34:41.025Z"
+    },
+    {
+      "journeyId": "J12",
+      "journeyName": "Government Long Form (4-page)",
+      "status": "passed",
+      "executionTimeMs": 547,
+      "partialCompletion": 1,
+      "stepsTotal": 12,
+      "stepsCompleted": 12,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to gov-forms homepage",
+          "status": "passed",
+          "executionTimeMs": 45
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Start application form",
+          "status": "passed",
+          "executionTimeMs": 62
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Fill personal information",
+          "status": "passed",
+          "executionTimeMs": 31
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Submit personal info and navigate to address page",
+          "status": "passed",
+          "executionTimeMs": 67
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Fill address details with state dropdown",
+          "status": "passed",
+          "executionTimeMs": 28
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Submit address and navigate to employment page",
+          "status": "passed",
+          "executionTimeMs": 74
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Fill employment status (triggers conditional section)",
+          "status": "passed",
+          "executionTimeMs": 23
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Fill employer details in conditional section",
+          "status": "passed",
+          "executionTimeMs": 22
+        },
+        {
+          "stepIndex": 8,
+          "stepName": "Submit employment and navigate to review page",
+          "status": "passed",
+          "executionTimeMs": 76
+        },
+        {
+          "stepIndex": 9,
+          "stepName": "Verify review page shows all entered data",
+          "status": "passed",
+          "executionTimeMs": 6
+        },
+        {
+          "stepIndex": 10,
+          "stepName": "Accept declaration and submit application",
+          "status": "passed",
+          "executionTimeMs": 104
+        },
+        {
+          "stepIndex": 11,
+          "stepName": "Verify reference number on confirmation page",
+          "status": "passed",
+          "executionTimeMs": 9
+        }
+      ],
+      "startedAt": "2026-04-05T20:34:41.223Z",
+      "finishedAt": "2026-04-05T20:34:41.770Z"
+    },
+    {
+      "journeyId": "J14",
+      "journeyName": "Product Comparison",
+      "status": "failed",
+      "executionTimeMs": 20105,
+      "partialCompletion": 0,
+      "stepsTotal": 8,
+      "stepsCompleted": 0,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Search for products",
+          "status": "failed",
+          "executionTimeMs": 20105,
+          "errorMessage": "page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('#search') to be visible\n"
+        }
+      ],
+      "errorMessage": "page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('#search') to be visible\n",
+      "startedAt": "2026-04-05T20:34:41.998Z",
+      "finishedAt": "2026-04-05T20:35:02.103Z"
+    },
+    {
+      "journeyId": "J17",
+      "journeyName": "Return/Refund Request",
+      "status": "passed",
+      "executionTimeMs": 349,
+      "partialCompletion": 1,
+      "stepsTotal": 9,
+      "stepsCompleted": 9,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to return portal",
+          "status": "passed",
+          "executionTimeMs": 41
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "Login with pre-seeded user",
+          "status": "passed",
+          "executionTimeMs": 85
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "View order history",
+          "status": "passed",
+          "executionTimeMs": 9
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "Select eligible order for return",
+          "status": "passed",
+          "executionTimeMs": 57
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "Fill return reason and refund method",
+          "status": "passed",
+          "executionTimeMs": 14
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Submit return request and check eligibility",
+          "status": "passed",
+          "executionTimeMs": 79
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "Verify return label is generated",
+          "status": "passed",
+          "executionTimeMs": 4
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "Confirm return shipment",
+          "status": "passed",
+          "executionTimeMs": 54
+        },
+        {
+          "stepIndex": 8,
+          "stepName": "Verify confirmation number",
+          "status": "passed",
+          "executionTimeMs": 6
+        }
+      ],
+      "startedAt": "2026-04-05T20:35:02.313Z",
+      "finishedAt": "2026-04-05T20:35:02.662Z"
+    }
+  ]
+}

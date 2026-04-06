@@ -1,0 +1,59 @@
+
+Journey Benchmark
+   Provider: direct (L1)
+   Journeys: J00, J01, J04, J05, J08, J09, J12, J14, J17
+   Site:     webarena
+   Target:   http://localhost:8080
+   Headless: true
+
+> Running J00: The Gym — Component Diagnostic
+  [FAIL] FAILED — 30580ms (46% complete)
+  Error: locator.fill: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByLabel('Secret code input')
+
+
+> Running J01: Simple Product Purchase
+  [FAIL] FAILED — 20095ms (0% complete)
+  Error: page.waitForSelector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator('#search') to be visible
+
+
+> Running J04: Cart Recovery (Expired Session)
+  [FAIL] FAILED — 20120ms (0% complete)
+  Error: page.waitForSelector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator('#search') to be visible
+
+
+> Running J05: Flight Search & Booking
+  [PASS] PASSED — 3300ms (100% complete)
+
+> Running J08: Account Registration + Email Verify
+  [PASS] PASSED — 316ms (100% complete)
+
+> Running J09: Password Reset
+  [PASS] PASSED — 431ms (100% complete)
+
+> Running J12: Government Long Form (4-page)
+  [PASS] PASSED — 526ms (100% complete)
+
+> Running J14: Product Comparison
+  [FAIL] FAILED — 20107ms (0% complete)
+  Error: page.waitForSelector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator('#search') to be visible
+
+
+> Running J17: Return/Refund Request
+  [PASS] PASSED — 334ms (100% complete)
+
+Saved to database (run #211)
+JSON report: reports/stage5-2026-04-05T20-51-26/report_2026-04-05_20-51-26.json
+Markdown report: reports/stage5-2026-04-05T20-51-26/report_2026-04-05_20-51-26.md
+
+---------------------------------
+Passed:  5/9
+Failed:  4/9
+Success: 55.6%

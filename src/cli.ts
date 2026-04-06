@@ -3,22 +3,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createProvider } from './webfuse/index.js';
 import { BenchmarkRunner } from './runner/runner.js';
-import { defaultTraceConfig } from './runner/trace.js';
 import { openDatabase, insertRun } from './db/index.js';
-import { generateJsonReport, generateMarkdownReport, generateComparisonReport, generateStakeholderReport } from './reporter/index.js';
-import { getSiteConfig, FLIGHT_APP_CONFIG, AUTH_APP_CONFIG, GOV_FORMS_CONFIG, RETURN_PORTAL_CONFIG, GYM_CONFIG, resolveAppUrls, resolveGymUrl } from './journeys/config.js';
+import { generateJsonReport, generateMarkdownReport } from './reporter/index.js';
+import { GYM_CONFIG, resolveGymUrl } from './journeys/config.js';
 import { J00TheGym } from './journeys/j00-the-gym.js';
-import { J01ProductPurchase } from './journeys/j01-product-purchase.js';
-import { J04CartRecovery } from './journeys/j04-cart-recovery.js';
-import { J05FlightBooking } from './journeys/j05-flight-booking.js';
-import { J08AccountRegistration } from './journeys/j08-account-registration.js';
-import { J09PasswordReset } from './journeys/j09-password-reset.js';
-import { J14ProductComparison } from './journeys/j14-product-comparison.js';
-import { J12GovernmentForm } from './journeys/j12-government-form.js';
-import { J17ReturnRefund } from './journeys/j17-return-refund.js';
-import { flakinessScore } from './metrics/index.js';
-import { generateRepros } from './repro/index.js';
-import type { Journey, JourneyResult } from './types.js';
+import type { Journey } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const reportsDir = path.join(__dirname, '..', 'reports');
@@ -28,352 +17,103 @@ const program = new Command();
 
 program
   .name('journey-benchmark')
-  .description('Browser automation benchmark for web journeys (shopping, flight booking, auth flows, government forms)')
-  .version('4.0.0')
-  .option('--provider <type>', 'Automation provider: direct | webfuse | webfuse-mcp | browser-use', 'direct')
-  .option('--level <n>', 'Execution level: 1=Playwright, 2=LLM+Playwright, 3=Scripted Webfuse, 4=Agentic Webfuse')
-  .option('--journeys <list>', 'Comma-separated journey IDs to run (e.g. J01,J04,J05,J08,J09,J12,J14,J17)', 'J01,J04,J05,J08,J09,J12,J14,J17')
-  .option('--site <type>', 'Target site type: webarena | prestashop | magento', 'webarena')
-  .option('--shop-url <url>', 'Override target shop URL', '')
-  .option('--space-url <url>', 'Webfuse space URL to use for Webfuse provider', '')
+  .description('4-Mode Gym Benchmark: 26-component diagnostic across M1-M4')
+  .version('5.0.0')
+  .option('--mode <mode>', 'Interaction mode: M1 (Playwright) | M2 (LLM+Playwright) | M3 (Webfuse Scripted) | M4 (Webfuse Agentic) | all', 'M1')
+  .option('--runs <n>', 'Number of runs per component (default: 3)', '3')
+  .option('--output <dir>', 'Output directory for evidence files', reportsDir)
   .option('--headless', 'Run browser in headless mode', true)
   .option('--no-headless', 'Run browser in non-headless mode')
   .option('--db <path>', 'Path to SQLite database', dbPath)
-  .option('--reports <dir>', 'Output directory for reports', reportsDir)
-  .option('--trace', 'Enable Playwright trace capture (saved to traces/<runId>/)', false)
-  .option('--compare', 'Run all available providers and generate a comparison report', false)
+  .option('--diagnostic', 'Preserve Webfuse sessions (no termination)', false)
   .option('--llm-proxy-port <port>', 'Port for the in-process LLM proxy (default: 8999)', '8999')
-  .option('--flakiness-runs <n>', 'Run each journey N times and compute M4 flakiness score (default: 1)', '1')
-  .option('--stakeholder', 'Generate stakeholder summary report after run', false)
-  .option('--repro', 'Generate standalone HTML repro cases for failed journeys', false)
-  .option('--repro-dir <dir>', 'Output directory for repro HTML files', path.join(__dirname, '..', 'repros'))
-  // TODO: WebfuseProvider carry-over for S4.7 — requires WEBFUSE_API_KEY env var
   .action(async (options) => {
-    // --level flag maps to provider automatically
-    if (options.level) {
-      const levelMap: Record<string, string> = {
-        '1': 'direct',           // L1: Scripted Playwright
-        '2': 'llm-playwright',   // L2: LLM + Playwright (CDP)
-        '3': 'webfuse',          // L3: Scripted Webfuse (no LLM)
-        '4': 'webfuse-mcp',      // L4: Agentic Webfuse (LLM + MCP)
-      };
-      const mapped = levelMap[options.level];
-      if (!mapped) {
-        console.error(`Invalid --level: ${options.level}. Must be 1, 2, 3, or 4.`);
-        process.exit(1);
-      }
-      options.provider = mapped;
-      process.env['EXECUTION_LEVEL'] = options.level;
+    const modeMap: Record<string, string> = {
+      'M1': 'direct',
+      'M2': 'llm-playwright',
+      'M3': 'webfuse',
+      'M4': 'webfuse-mcp',
+    };
+
+    const mode = options.mode.toUpperCase();
+    if (mode !== 'ALL' && !modeMap[mode]) {
+      console.error(`Invalid --mode: ${options.mode}. Must be M1, M2, M3, M4, or all.`);
+      process.exit(1);
     }
 
-    process.env['AUTOMATION_PROVIDER'] = options.provider;
-    process.env['SITE_TYPE'] = options.site;
-    if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl;
-    if (options.spaceUrl) process.env['WEBFUSE_SPACE_URL'] = options.spaceUrl;
-
-    // Re-resolve app URLs after setting AUTOMATION_PROVIDER (webfuse uses public tunnel URLs)
-    resolveAppUrls();
-
-    if (options.provider === 'webfuse' || options.provider === 'webfuse-mcp') {
-      const webfuseTarget = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
-      process.env['SHOP_URL'] = webfuseTarget;
+    if (options.diagnostic) {
+      process.env['DIAGNOSTIC_MODE'] = '1';
     }
 
-    const config = getSiteConfig();
-    const journeyIds: string[] = options.journeys.split(',').map((j: string) => j.trim().toUpperCase());
     const proxyPort = parseInt(options.llmProxyPort ?? '8999', 10);
-    const flakinessRuns = parseInt(options.flakinessRuns ?? '1', 10);
+    const runs = parseInt(options.runs ?? '3', 10);
 
-    // Resolve Journey 0 URL — defaults to file:// if GYM_URL env not set and provider is direct
+    // Resolve Gym URL
     resolveGymUrl();
     const gymUrl = process.env['GYM_URL'] ??
-      (options.provider === 'direct'
+      (mode === 'M1' || mode === 'M2'
         ? `file://${path.resolve(__dirname, '..', 'journeys', 'journey-0', 'index.html')}`
         : GYM_CONFIG.baseUrl);
 
     const allJourneys: Record<string, Journey> = {
       J00: new J00TheGym({ baseUrl: gymUrl }),
-      J01: new J01ProductPurchase(config),
-      J04: new J04CartRecovery(config),
-      J05: new J05FlightBooking(FLIGHT_APP_CONFIG),
-      J08: new J08AccountRegistration(AUTH_APP_CONFIG),
-      J09: new J09PasswordReset(AUTH_APP_CONFIG),
-      J12: new J12GovernmentForm(GOV_FORMS_CONFIG),
-      J14: new J14ProductComparison(config),
-      J17: new J17ReturnRefund(RETURN_PORTAL_CONFIG),
     };
 
-    const selectedJourneys = journeyIds
-      .map(id => allJourneys[id])
-      .filter((j): j is Journey => j !== undefined);
+    const journey = allJourneys['J00']!;
+    const modesToRun = mode === 'ALL' ? ['M1', 'M2', 'M3', 'M4'] : [mode];
 
-    if (selectedJourneys.length === 0) {
-      console.error('No valid journeys selected. Available: J01, J04, J05, J08, J09, J12, J14, J17');
-      process.exit(1);
-    }
-
-    // --compare: run all available providers
-    if (options.compare) {
-      await runComparison(options, selectedJourneys, config, proxyPort);
-      return;
-    }
-
-    const levelLabel = options.level ? `L${options.level}` : null;
-    console.log(`\nJourney Benchmark`);
-    console.log(`   Provider: ${options.provider}${levelLabel ? ` (${levelLabel})` : ''}`);
-    console.log(`   Journeys: ${journeyIds.join(', ')}`);
-    console.log(`   Site:     ${options.site}`);
-    console.log(`   Target:   ${config.baseUrl}`);
+    console.log(`\n4-Mode Gym Benchmark`);
+    console.log(`   Mode(s):  ${modesToRun.join(', ')}`);
+    console.log(`   Runs:     ${runs}`);
+    console.log(`   Gym URL:  ${gymUrl}`);
     console.log(`   Headless: ${options.headless}`);
-    if (options.trace) console.log(`   Trace:    enabled`);
-    if (flakinessRuns > 1) console.log(`   Flakiness runs: ${flakinessRuns}`);
+    if (options.diagnostic) console.log(`   Diagnostic: ON (sessions preserved)`);
 
-    let provider;
-    try {
-      provider = createProvider(options.headless, proxyPort);
-    } catch (err) {
-      console.error(`Failed to create provider: ${err instanceof Error ? err.message : err}`);
-      process.exit(1);
+    // Run each mode sequentially
+    for (const currentMode of modesToRun) {
+      const providerName = modeMap[currentMode]!;
+      process.env['AUTOMATION_PROVIDER'] = providerName;
+
+      let provider;
+      try {
+        provider = createProvider(options.headless, proxyPort);
+      } catch (err) {
+        console.error(`\n[${currentMode}] Failed to create provider: ${err instanceof Error ? err.message : err}`);
+        continue;
+      }
+
+      console.log(`\n--- ${currentMode} (${providerName}) ---`);
+
+      const runner = new BenchmarkRunner({
+        provider,
+        journeys: [journey],
+        baseUrl: gymUrl,
+        site: 'gym',
+      });
+
+      try {
+        const result = await runner.run();
+
+        const db = openDatabase(options.db);
+        const dbRunId = insertRun(db, result);
+        db.close();
+        console.log(`  [${currentMode}] Saved to database (run #${dbRunId})`);
+
+        const jsonPath = generateJsonReport(result, options.output);
+        const mdPath = generateMarkdownReport(result, options.output);
+        console.log(`  [${currentMode}] JSON: ${jsonPath}`);
+        console.log(`  [${currentMode}] Markdown: ${mdPath}`);
+
+        console.log(`  [${currentMode}] Passed: ${result.passed}/${result.totalJourneys}`);
+      } catch (err) {
+        console.error(`  [${currentMode}] Error: ${err instanceof Error ? err.message : err}`);
+      } finally {
+        await provider.close().catch(() => {});
+      }
     }
 
-    const runId = `${options.provider}_${Date.now()}`;
-    const traceConfig = options.trace
-      ? defaultTraceConfig(runId, path.join(__dirname, '..', 'traces'))
-      : undefined;
-
-    // Determine runner baseUrl: journeys that use standalone apps (not the shop)
-    // should use their own URL so the reachability check passes even if the shop is down.
-    const shopJourneys = new Set(['J01', 'J04', 'J14']);
-    const needsShop = journeyIds.some(id => shopJourneys.has(id));
-    const standaloneUrls: Record<string, string> = {
-      J00: gymUrl,
-      J05: FLIGHT_APP_CONFIG.baseUrl,
-      J08: AUTH_APP_CONFIG.baseUrl,
-      J09: AUTH_APP_CONFIG.baseUrl,
-      J12: GOV_FORMS_CONFIG.baseUrl,
-      J17: RETURN_PORTAL_CONFIG.baseUrl,
-    };
-    // If no shop journeys are selected, use the first standalone journey's URL for reachability
-    const runnerBaseUrl = needsShop
-      ? config.baseUrl
-      : (standaloneUrls[journeyIds[0]] ?? config.baseUrl);
-
-    const runner = new BenchmarkRunner({
-      provider,
-      journeys: selectedJourneys,
-      baseUrl: runnerBaseUrl,
-      site: options.site,
-      trace: traceConfig,
-    });
-
-    let exitCode = 0;
-    try {
-      const result = await runner.run();
-
-      const db = openDatabase(options.db);
-      const dbRunId = insertRun(db, result);
-      db.close();
-      console.log(`\nSaved to database (run #${dbRunId})`);
-
-      const jsonPath = generateJsonReport(result, options.reports);
-
-      // --repro: generate standalone HTML repro cases for failed journeys
-      let reproFiles: import('./repro/index.js').ReproFile[] = [];
-      if (options.repro) {
-        const failedJourneys = result.journeys.filter(j => j.status !== 'passed');
-        if (failedJourneys.length > 0) {
-          reproFiles = generateRepros(selectedJourneys, result.journeys, {
-            outputDir: options.reproDir,
-            targetUrl: config.baseUrl,
-          });
-          if (reproFiles.length > 0) {
-            console.log(`\nRepro cases generated (${reproFiles.length}):`);
-            for (const repro of reproFiles) {
-              console.log(`   ${repro.journeyId}: ${repro.filePath}`);
-            }
-          }
-        }
-      }
-
-      const mdPath = generateMarkdownReport(result, options.reports, reproFiles.length > 0 ? reproFiles : undefined);
-      console.log(`JSON report: ${jsonPath}`);
-      console.log(`Markdown report: ${mdPath}`);
-
-      // --flakiness-runs: run each journey N-1 more times and compute M4
-      if (flakinessRuns > 1) {
-        console.log(`\nFlakiness Assessment (${flakinessRuns} runs per journey):`);
-        for (const journey of selectedJourneys) {
-          const allRuns: JourneyResult[] = [];
-          // First run already in result
-          const firstRun = result.journeys.find(j => j.journeyId === journey.id);
-          if (firstRun) allRuns.push(firstRun);
-          // Additional runs
-          for (let i = 1; i < flakinessRuns; i++) {
-            try {
-              const extraResult = await runner.run();
-              const jResult = extraResult.journeys.find(j => j.journeyId === journey.id);
-              if (jResult) allRuns.push(jResult);
-            } catch {
-              // Skip failed runs
-            }
-          }
-          const m4 = flakinessScore(allRuns);
-          const pct = (m4 * 100).toFixed(1);
-          console.log(`   ${journey.id}: M4 flakiness = ${pct}% (${allRuns.filter(r => r.status === 'passed').length}/${allRuns.length} passed)`);
-        }
-      }
-
-      // --stakeholder: generate stakeholder summary
-      if (options.stakeholder) {
-        const { json: skJson, markdown: skMd } = generateStakeholderReport([result], options.reports);
-        console.log(`Stakeholder JSON: ${skJson}`);
-        console.log(`Stakeholder Markdown: ${skMd}`);
-      }
-
-      console.log(`\n---------------------------------`);
-      console.log(`Passed:  ${result.passed}/${result.totalJourneys}`);
-      console.log(`Failed:  ${result.failed}/${result.totalJourneys}`);
-      const successPct = result.totalJourneys > 0
-        ? ((result.passed / result.totalJourneys) * 100).toFixed(1)
-        : '0.0';
-      console.log(`Success: ${successPct}%`);
-
-      if (result.failed > 0) exitCode = 1;
-    } finally {
-      await provider.close().catch(() => {});
-    }
-
-    process.exit(exitCode);
+    console.log(`\n=== Benchmark Complete ===`);
   });
 
-/** Build a fresh journey list for the given journey IDs using current env-resolved URLs */
-function buildJourneys(journeyIds: string[]): Journey[] {
-  const cfg = getSiteConfig();
-  resolveAppUrls();
-  resolveGymUrl();
-  const gymUrl = process.env['GYM_URL'] ??
-    `file://${path.resolve(__dirname, '..', 'journeys', 'journey-0', 'index.html')}`;
-  const allJourneys: Record<string, Journey> = {
-    J00: new J00TheGym({ baseUrl: gymUrl }),
-    J01: new J01ProductPurchase(cfg),
-    J04: new J04CartRecovery(cfg),
-    J05: new J05FlightBooking(FLIGHT_APP_CONFIG),
-    J08: new J08AccountRegistration(AUTH_APP_CONFIG),
-    J09: new J09PasswordReset(AUTH_APP_CONFIG),
-    J12: new J12GovernmentForm(GOV_FORMS_CONFIG),
-    J14: new J14ProductComparison(cfg),
-    J17: new J17ReturnRefund(RETURN_PORTAL_CONFIG),
-  };
-  return journeyIds.map(id => allJourneys[id]).filter((j): j is Journey => j !== undefined);
-}
-
-async function runComparison(
-  options: Record<string, unknown>,
-  journeys: Journey[],
-  config: ReturnType<typeof getSiteConfig>,
-  proxyPort: number
-): Promise<void> {
-  const providerNames = ['direct', 'webfuse', 'webfuse-mcp', 'browser-use'];
-  const results = [];
-  const pendingCredentialProviders: string[] = [];
-  const journeyIds = journeys.map(j => j.id);
-
-  console.log(`\nComparison Run — providers: ${providerNames.join(', ')}`);
-  console.log(`Journeys: ${journeyIds.join(', ')}\n`);
-
-  for (const providerName of providerNames) {
-    process.env['AUTOMATION_PROVIDER'] = providerName;
-    if (providerName === 'webfuse' || providerName === 'webfuse-mcp') {
-      process.env['SHOP_URL'] = process.env['WEBFUSE_TARGET_URL'] ?? 'https://webarena-shop.webfuse.it/';
-    } else {
-      // Reset SHOP_URL to default so getSiteConfig() returns localhost URLs for direct/browser-use
-      delete process.env['SHOP_URL'];
-      if (options.shopUrl) process.env['SHOP_URL'] = options.shopUrl as string;
-    }
-    resolveAppUrls();  // Re-resolve URLs AFTER setting SHOP_URL and AUTOMATION_PROVIDER
-
-    // Rebuild journeys with provider-specific URLs (Webfuse needs public tunnel URLs)
-    const providerJourneys = buildJourneys(journeyIds);
-    const providerConfig = getSiteConfig();
-
-    let provider;
-    try {
-      provider = createProvider(options.headless as boolean, proxyPort);
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`Skipping ${providerName}: ${errMsg}`);
-      // For webfuse providers missing credentials, include a placeholder result
-      if ((providerName === 'webfuse' || providerName === 'webfuse-mcp') && (errMsg.includes('PENDING_CREDENTIAL') || errMsg.includes('WEBFUSE_AUTOMATION_KEY is not set'))) {
-        const now = new Date().toISOString();
-        const displayName = providerName === 'webfuse' ? 'WebfuseProvider' : 'WebfuseMcpProvider';
-        pendingCredentialProviders.push(displayName);
-        results.push({
-          startedAt: now,
-          finishedAt: now,
-          provider: displayName,
-          site: options.site as string,
-          targetUrl: '',
-          totalJourneys: providerJourneys.length,
-          passed: 0,
-          failed: providerJourneys.length,
-          journeys: providerJourneys.map(j => ({
-            journeyId: j.id,
-            journeyName: j.name,
-            status: 'error' as const,
-            executionTimeMs: 0,
-            partialCompletion: 0,
-            stepsTotal: j.steps.length,
-            stepsCompleted: 0,
-            steps: [],
-            errorMessage: 'PENDING_CREDENTIAL',
-            startedAt: now,
-            finishedAt: now,
-          })),
-        });
-      }
-      continue;
-    }
-
-    console.log(`--- Provider: ${providerName} ---`);
-    const runner = new BenchmarkRunner({
-      provider,
-      journeys: providerJourneys,
-      baseUrl: providerConfig.baseUrl,
-      site: options.site as string,
-    });
-
-    try {
-      const result = await runner.run();
-      results.push(result);
-    } catch (err) {
-      console.warn(`  Error: ${err instanceof Error ? err.message : err}`);
-    } finally {
-      await provider.close().catch(() => {});
-    }
-  }
-
-  if (results.length === 0) {
-    console.error('No results to compare.');
-    process.exit(1);
-  }
-
-  const { json, markdown } = generateComparisonReport(results, options.reports as string);
-
-  // Append PENDING_CREDENTIAL note to markdown if any webfuse providers were skipped
-  if (pendingCredentialProviders.length > 0) {
-    const fs = await import('fs');
-    const note = `\n---\n\n**Note:** ${pendingCredentialProviders.join(', ')} (Track C): PENDING_CREDENTIAL — WEBFUSE_AUTOMATION_KEY not set on dev machine. Re-run required once a Space Automation API key is provisioned.\n`;
-    fs.appendFileSync(markdown, note, 'utf-8');
-  }
-
-  console.log(`\nComparison JSON:     ${json}`);
-  console.log(`Comparison Markdown: ${markdown}`);
-
-  if (options.stakeholder) {
-    const { json: skJson, markdown: skMd } = generateStakeholderReport(results, options.reports as string);
-    console.log(`Stakeholder JSON:    ${skJson}`);
-    console.log(`Stakeholder Markdown: ${skMd}`);
-  }
-}
 
 program.parse();

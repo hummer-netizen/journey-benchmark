@@ -1,0 +1,119 @@
+
+Journey Benchmark
+   Provider: webfuse (L3)
+   Journeys: J00, J01, J04, J05, J08, J09, J12, J14, J17
+   Site:     webarena
+   Target:   https://webarena-shop.webfuse.it/
+   Headless: true
+
+> Running J00: The Gym — Component Diagnostic
+  [Webfuse] Creating session via REST API (space: webfuse-mcp-demo)
+  [Webfuse] Session created: s20BY8HlGlVzRficQ3m1yzqrGQ
+  [Webfuse] Session active. Current URL: 
+  [Webfuse] Navigating to: https://webarena-shop.webfuse.it/
+  [Webfuse] Navigated to: https://webarena-shop.webfuse.it/
+  [Webfuse/nav] goto: https://gym-diagnostic.webfuse.it?cb=1775422391254
+  [Webfuse/click] #gym-context-area → target: [wf-id="93"] (right)
+  [Webfuse/click] #ctx-edit → target: [wf-id="100"]
+  [Webfuse/click] #img-blue → target: [wf-id="131"]
+  [waitForSelector] #image-status.success poll#1: tag=<div id="image-status" class="status" wf-id="148"></div>
+  </div>
+
+  <!-- 5. Textarea
+  [waitForSelector] #image-status.success poll#2: tag=<div id="image-status" class="status" wf-id="148"></div>
+  </div>
+
+  <!-- 5. Textarea
+  [waitForSelector] #image-status.success poll#3: tag=<div id="image-status" class="status" wf-id="148"></div>
+  </div>
+
+  <!-- 5. Textarea
+  [waitForSelector] TIMEOUT #image-status.success after 19 polls
+  [FAIL] FAILED — 20404ms (14% complete)
+  Error: Timeout waiting for selector: #image-status.success
+
+> Running J01: Simple Product Purchase
+  Warning: Target https://webarena-shop.webfuse.it/ is not reachable.
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: Target unreachable: https://webarena-shop.webfuse.it/
+
+> Running J04: Cart Recovery (Expired Session)
+  Warning: Target https://webarena-shop.webfuse.it/ is not reachable.
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: Target unreachable: https://webarena-shop.webfuse.it/
+
+> Running J05: Flight Search & Booking
+  [Webfuse] Creating session via REST API (space: webfuse-mcp-demo)
+  [Webfuse] Session created: s20NqKdAaNqURkYmX8XZDcvQ
+  [Webfuse] Session active. Current URL: 
+  [Webfuse] Navigating to: https://webarena-shop.webfuse.it/
+  [Webfuse] Navigated to: https://webarena-shop.webfuse.it/
+  [Webfuse/nav] goto: https://flight-app.webfuse.it
+  [Webfuse/click] #search-btn → target: [wf-id="121"]
+  [waitForSelector] TIMEOUT .flight-card, p after 30 polls
+  [FAIL] FAILED — 22069ms (38% complete)
+  Error: Timeout waiting for selector: .flight-card, p
+
+> Running J08: Account Registration + Email Verify
+  [Webfuse] Creating session via REST API (space: webfuse-mcp-demo)
+  [Webfuse] Session created: s20Y2a1VJN6ZSQeIfuvoqe5Gtw
+  [Webfuse] Session active. Current URL: 
+  [Webfuse] Navigating to: https://webarena-shop.webfuse.it/
+  [Webfuse] Navigated to: https://webarena-shop.webfuse.it/
+  [Webfuse/nav] goto: https://auth-app.webfuse.it/register
+  [Webfuse/click] #register-btn → target: [wf-id="49"]
+  [Webfuse/nav] goto: https://auth-app.webfuse.it/verify-email?token=fa46b2b3cac5b092a9aae649aa859d578543734cfd55bac82d65c1f9e09251fc
+  [Webfuse/nav] goto: https://auth-app.webfuse.it/login
+  [Webfuse/click] #login-btn → target: [wf-id="14"]
+  [PASS] PASSED — 17146ms (100% complete)
+
+> Running J09: Password Reset
+  [Webfuse] Creating session via REST API (space: webfuse-mcp-demo)
+  [Webfuse] Session created: s20cPdnvtMY6S0KQbUb8y6QAzw
+  [Webfuse] Session active. Current URL: 
+  [Webfuse] Navigating to: https://webarena-shop.webfuse.it/
+  [Webfuse] Navigated to: https://webarena-shop.webfuse.it/
+  [Webfuse/nav] goto: https://auth-app.webfuse.it/forgot-password
+  [Webfuse/click] #reset-request-btn → target: [wf-id="39"]
+  [Webfuse/nav] goto: https://auth-app.webfuse.it/reset-password?token=9aa6abf83ef31e71eafe11ec96ced915680d8fdb85aa7869834cb57d93610a21
+  [Webfuse/click] #reset-password-btn → target: [wf-id="15"]
+  [Webfuse/click] #login-btn → target: [wf-id="47"]
+  [PASS] PASSED — 18578ms (100% complete)
+
+> Running J12: Government Long Form (4-page)
+  [Webfuse] Creating session via REST API (space: webfuse-mcp-demo)
+  [Webfuse] Session created: s20AYStoH1P4So2E4Evh65uSSA
+  [Webfuse] Session active. Current URL: 
+  [Webfuse] Navigating to: https://webarena-shop.webfuse.it/
+  [Webfuse] Navigated to: https://webarena-shop.webfuse.it/
+  [Webfuse/nav] goto: https://gov-forms.webfuse.it
+  [waitForSelector] TIMEOUT #start-application after 20 polls
+  [FAIL] FAILED — 10195ms (0% complete)
+  Error: Timeout waiting for selector: #start-application
+
+> Running J14: Product Comparison
+  Warning: Target https://webarena-shop.webfuse.it/ is not reachable.
+  [ERROR] ERROR — 0ms (0% complete)
+  Error: Target unreachable: https://webarena-shop.webfuse.it/
+
+> Running J17: Return/Refund Request
+  [Webfuse] Creating session via REST API (space: webfuse-mcp-demo)
+  [Webfuse] Session created: s20WqJqOdKpQ9iUAf81SySCw
+  [Webfuse] Session active. Current URL: 
+  [Webfuse] Navigating to: https://webarena-shop.webfuse.it/
+  [Webfuse] Navigated to: https://webarena-shop.webfuse.it/
+  [Webfuse/nav] goto: https://return-portal.webfuse.it
+  [waitForSelector] TIMEOUT #login-form after 20 polls
+  [FAIL] FAILED — 10176ms (0% complete)
+  Error: Timeout waiting for selector: #login-form
+
+Saved to database (run #212)
+JSON report: reports/stage5-2026-04-05T20-51-26/report_2026-04-05_20-53-05.json
+Markdown report: reports/stage5-2026-04-05T20-51-26/report_2026-04-05_20-53-05.md
+
+---------------------------------
+Passed:  2/9
+Failed:  7/9
+Success: 22.2%
+  [Webfuse] DIAGNOSTIC MODE: Session preserved: s20WqJqOdKpQ9iUAf81SySCw
+  [Webfuse] Session closed. Audit log: 240 tool calls

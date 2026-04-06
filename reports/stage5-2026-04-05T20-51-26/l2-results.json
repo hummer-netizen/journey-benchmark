@@ -1,0 +1,193 @@
+{
+  "startedAt": "2026-04-05T20:55:20.040Z",
+  "finishedAt": "2026-04-05T21:20:35.437Z",
+  "provider": "LlmPlaywrightProvider",
+  "site": "webarena",
+  "targetUrl": "https://gym-diagnostic.webfuse.it",
+  "totalJourneys": 1,
+  "passed": 1,
+  "failed": 0,
+  "journeys": [
+    {
+      "journeyId": "J00",
+      "journeyName": "The Gym — Component Diagnostic",
+      "status": "passed",
+      "executionTimeMs": 1515126,
+      "partialCompletion": 1,
+      "stepsTotal": 28,
+      "stepsCompleted": 28,
+      "steps": [
+        {
+          "stepIndex": 0,
+          "stepName": "Navigate to The Gym",
+          "status": "passed",
+          "executionTimeMs": 2960
+        },
+        {
+          "stepIndex": 1,
+          "stepName": "DatePicker — Select a date",
+          "status": "passed",
+          "executionTimeMs": 42127
+        },
+        {
+          "stepIndex": 2,
+          "stepName": "Select — Choose an exercise",
+          "status": "passed",
+          "executionTimeMs": 11529
+        },
+        {
+          "stepIndex": 3,
+          "stepName": "ContextMenu — Right-click and choose action",
+          "status": "passed",
+          "executionTimeMs": 51463
+        },
+        {
+          "stepIndex": 4,
+          "stepName": "ClickableImage — Select an image",
+          "status": "passed",
+          "executionTimeMs": 149063
+        },
+        {
+          "stepIndex": 5,
+          "stepName": "Textarea — Enter workout notes",
+          "status": "passed",
+          "executionTimeMs": 36987
+        },
+        {
+          "stepIndex": 6,
+          "stepName": "HoverState — Reveal and click",
+          "status": "passed",
+          "executionTimeMs": 135926
+        },
+        {
+          "stepIndex": 7,
+          "stepName": "ShadowDOM — Enter membership ID",
+          "status": "passed",
+          "executionTimeMs": 54014
+        },
+        {
+          "stepIndex": 8,
+          "stepName": "NativeDate — Select a date with type=date",
+          "status": "passed",
+          "executionTimeMs": 19838
+        },
+        {
+          "stepIndex": 9,
+          "stepName": "TimeInput — Select a time",
+          "status": "passed",
+          "executionTimeMs": 17979
+        },
+        {
+          "stepIndex": 10,
+          "stepName": "DateTimeLocal — Select date and time",
+          "status": "passed",
+          "executionTimeMs": 36106
+        },
+        {
+          "stepIndex": 11,
+          "stepName": "RangeSlider — Set intensity to 75",
+          "status": "passed",
+          "executionTimeMs": 14246
+        },
+        {
+          "stepIndex": 12,
+          "stepName": "NestedShadow — Type code and confirm",
+          "status": "passed",
+          "executionTimeMs": 123137
+        },
+        {
+          "stepIndex": 13,
+          "stepName": "ClosedShadow — Enter secret code",
+          "status": "passed",
+          "executionTimeMs": 120837
+        },
+        {
+          "stepIndex": 14,
+          "stepName": "Dialog — Open, fill, and confirm",
+          "status": "passed",
+          "executionTimeMs": 58426
+        },
+        {
+          "stepIndex": 15,
+          "stepName": "ColorPicker — Set color to #00ff88",
+          "status": "passed",
+          "executionTimeMs": 23894
+        },
+        {
+          "stepIndex": 16,
+          "stepName": "BlurValidated — Enter and blur email",
+          "status": "passed",
+          "executionTimeMs": 56190
+        },
+        {
+          "stepIndex": 17,
+          "stepName": "InputChange — Trigger both input and change events",
+          "status": "passed",
+          "executionTimeMs": 54785
+        },
+        {
+          "stepIndex": 18,
+          "stepName": "FocusTrap — Open dialog, tab within, confirm",
+          "status": "passed",
+          "executionTimeMs": 53221
+        },
+        {
+          "stepIndex": 19,
+          "stepName": "SlottedContent — Interact with slotted elements",
+          "status": "passed",
+          "executionTimeMs": 19276
+        },
+        {
+          "stepIndex": 20,
+          "stepName": "DelegatesFocus — Click host, type in inner input",
+          "status": "passed",
+          "executionTimeMs": 122534
+        },
+        {
+          "stepIndex": 21,
+          "stepName": "FormAssociated — Rate and submit form",
+          "status": "passed",
+          "executionTimeMs": 126639
+        },
+        {
+          "stepIndex": 22,
+          "stepName": "Toggle — Click to toggle ON",
+          "status": "passed",
+          "executionTimeMs": 11875
+        },
+        {
+          "stepIndex": 23,
+          "stepName": "CustomizedBuiltin — Click counter 3 times",
+          "status": "passed",
+          "executionTimeMs": 14587
+        },
+        {
+          "stepIndex": 24,
+          "stepName": "SVGControl — Click the Go button",
+          "status": "passed",
+          "executionTimeMs": 21286
+        },
+        {
+          "stepIndex": 25,
+          "stepName": "CanvasWidget — Set gauge to 75",
+          "status": "passed",
+          "executionTimeMs": 20456
+        },
+        {
+          "stepIndex": 26,
+          "stepName": "DragDrop — Drag item to drop zone",
+          "status": "passed",
+          "executionTimeMs": 40247
+        },
+        {
+          "stepIndex": 27,
+          "stepName": "Submit — Verify all components",
+          "status": "passed",
+          "executionTimeMs": 75498
+        }
+      ],
+      "startedAt": "2026-04-05T20:55:20.306Z",
+      "finishedAt": "2026-04-05T21:20:35.432Z"
+    }
+  ]
+}
