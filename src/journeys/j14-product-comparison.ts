@@ -65,7 +65,7 @@ export class J14ProductComparison extends BaseJourney {
           // Use search to find products (WebArena homepage is CMS, no product grid)
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found');
-          await searchInput.fill(isMagento ? 'lamp' : 'mug');
+          await searchInput.fill(isMagento ? 'lamp' : 'poster');
           await searchInput.press('Enter');
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
 

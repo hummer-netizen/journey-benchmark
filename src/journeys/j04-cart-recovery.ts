@@ -32,7 +32,7 @@ export class J04CartRecovery extends BaseJourney {
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found');
-          await searchInput.fill(isMagento ? 'book' : 'mug');
+          await searchInput.fill(isMagento ? 'book' : 'shirt');
           await searchInput.press('Enter');
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
@@ -132,7 +132,7 @@ export class J04CartRecovery extends BaseJourney {
         execute: async (page: Page) => {
           const searchInput = await page.$(selectors.searchInput);
           if (!searchInput) throw new Error('Search input not found after session clear');
-          await searchInput.fill(isMagento ? 'book' : 'mug');
+          await searchInput.fill(isMagento ? 'book' : 'shirt');
           await searchInput.press('Enter');
           await page.waitForSelector(selectors.productLink, { timeout: 20000 });
           const link = await page.$(selectors.productLink);
