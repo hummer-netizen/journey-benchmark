@@ -237,6 +237,12 @@ export class WebfuseAgent {
   private readonly automationApi: AutomationApi | undefined;
   private readonly sessionId: string | undefined;
 
+  /** Accumulated token usage across all LLM calls in this agent's lifetime */
+  public tokensIn = 0;
+  public tokensOut = 0;
+  public turnCount = 0;
+  public toolCallCount = 0;
+
   constructor(page: Page, proxyPort: number, options: WebfuseAgentOptions = {}) {
     this.page = page;
     this.proxyPort = proxyPort;
@@ -329,6 +335,7 @@ export class WebfuseAgent {
           toolArgs = {};
         }
 
+        this.toolCallCount++;
         console.log(`  [Agent] Tool: ${toolName}(${JSON.stringify(toolArgs)})`);
 
         if (toolName === 'done') {
@@ -639,6 +646,14 @@ export class WebfuseAgent {
               resolve({ choices: [], error: { message: err['message'] ?? 'Anthropic API error' } });
               return;
             }
+
+            // Track token usage
+            const usage = anthropicResp['usage'] as Record<string, number> | undefined;
+            if (usage) {
+              this.tokensIn += usage['input_tokens'] ?? 0;
+              this.tokensOut += usage['output_tokens'] ?? 0;
+            }
+            this.turnCount++;
 
             // Translate Anthropic response to OpenAI ChatResponse format
             const content = anthropicResp['content'] as Array<Record<string, unknown>> ?? [];

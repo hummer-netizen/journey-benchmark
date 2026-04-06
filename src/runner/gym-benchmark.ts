@@ -2,6 +2,7 @@ import type { Page } from 'playwright';
 import type { AutomationProvider } from '../webfuse/provider.js';
 import type { GoalAwareProvider } from '../types.js';
 import { J00TheGym } from '../journeys/j00-the-gym.js';
+import { WebfuseAgent } from '../agents/webfuse-agent.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -157,32 +158,30 @@ export class GymBenchmarkRunner {
         const comp = COMPONENT_MAP[i]!;
         const start = Date.now();
 
-        // Reset token counters if available
-        const proxyProvider = provider as any;
-        let tokensBefore = { tokensIn: 0, tokensOut: 0, turns: 0, calls: 0 };
-        if (isAgentic && proxyProvider.getProxySummary) {
-          try {
-            const s = proxyProvider.getProxySummary();
-            tokensBefore = {
-              tokensIn: s.totalInputTokens ?? 0,
-              tokensOut: s.totalOutputTokens ?? 0,
-              turns: s.totalRequests ?? 0,
-              calls: s.totalToolCalls ?? 0,
-            };
-          } catch {}
-        }
-
         let status: 'PASS' | 'FAIL' = 'FAIL';
         let error: string | null = null;
         let statusText: string | null = null;
+        let tokensIn = 0, tokensOut = 0, turnCount = 0, toolCalls = 0;
 
         try {
           if (isGoalProvider && step.goal) {
-            // Agentic execution with timeout
+            // Agentic: create a fresh agent per component to track tokens
+            const agent = new WebfuseAgent(page, 0, {
+              maxIterations: CAPS.turnCount,
+              automationApi: (provider as any).webfuse?.getAutomationApi?.() ?? (provider as any).getAutomationApi?.() ?? undefined,
+              sessionId: (provider as any).webfuse?.getActiveSessionId?.() ?? (provider as any).getActiveSessionId?.() ?? undefined,
+            });
+
             await Promise.race([
-              (provider as any as GoalAwareProvider).executeGoal(page, step.goal),
+              agent.executeGoal(step.goal),
               new Promise((_, rej) => setTimeout(() => rej(new Error(`CAP_EXCEEDED: timeout=${timeout}ms`)), timeout)),
             ]);
+
+            // Read token counters from the agent
+            tokensIn = agent.tokensIn;
+            tokensOut = agent.tokensOut;
+            turnCount = agent.turnCount;
+            toolCalls = agent.toolCallCount;
           } else {
             // Scripted execution with timeout
             await Promise.race([
@@ -201,18 +200,6 @@ export class GymBenchmarkRunner {
           const statusId = `#${comp.id}-status`;
           statusText = await page.textContent(statusId).catch(() => null) as string | null;
         } catch {}
-
-        // Calculate token delta
-        let tokensIn = 0, tokensOut = 0, turnCount = 0, toolCalls = 0;
-        if (isAgentic && proxyProvider.getProxySummary) {
-          try {
-            const s = proxyProvider.getProxySummary();
-            tokensIn = (s.totalInputTokens ?? 0) - tokensBefore.tokensIn;
-            tokensOut = (s.totalOutputTokens ?? 0) - tokensBefore.tokensOut;
-            turnCount = (s.totalRequests ?? 0) - tokensBefore.turns;
-            toolCalls = (s.totalToolCalls ?? 0) - tokensBefore.calls;
-          } catch {}
-        }
 
         const timeMs = Date.now() - start;
         const result: ComponentResult = {
